@@ -1,12 +1,11 @@
 # Positional smoother on cartesian XY axes
 #
-# Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+# Copyright (C) 2019-2020  Kevin O'Connor <kevin@koconnor.net>
+# Copyright (C) 2020  Dmitry Butyugin <dmbutyugin@google.com>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
 import chelper
-
-MAX_ACCEL_COMPENSATION = 0.005
 
 class SmoothAxis:
     def __init__(self, config):
@@ -17,26 +16,19 @@ class SmoothAxis:
                 'damping_ratio_x', 0., minval=0., maxval=1.)
         self.damping_ratio_y = config.getfloat(
                 'damping_ratio_y', 0., minval=0., maxval=1.)
-        self.spring_period_x = config.getfloat('spring_period_x', 0., minval=0.)
-        self.spring_period_y = config.getfloat('spring_period_y', 0., minval=0.)
-        self.smooth_x = config.getfloat('smooth_x',
-                                        2. * self.spring_period_x,
-                                        minval=0., maxval=.200)
-        self.smooth_y = config.getfloat('smooth_y',
-                                        2. * self.spring_period_y,
-                                        minval=0., maxval=.200)
-        self.accel_comp_x = config.getfloat(
-                'accel_comp_x', (self.spring_period_x / (2. * math.pi))**2,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
-        self.accel_comp_y = config.getfloat(
-                'accel_comp_y', (self.spring_period_y / (2. * math.pi))**2,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
+        self.target_freq_x = config.getfloat('target_freq_x', 0., minval=0.)
+        self.target_freq_y = config.getfloat('target_freq_y', 0., minval=0.)
+        ffi_main, ffi_lib = chelper.get_ffi()
+        self.smoothers = {'sifp05': ffi_lib.SIFP05
+                , 'siaf05': ffi_lib.SIAF05
+                , 'dfsf05': ffi_lib.DFSF05
+                , 'dfaf05': ffi_lib.DFAF05
+                , 'dfaf02': ffi_lib.DFAF02
+                , 'dfaf01': ffi_lib.DFAF01}
+        self.smoother_type = config.getchoice('smoother', self.smoothers,
+                                              'sifp05')
         self.stepper_kinematics = []
         self.orig_stepper_kinematics = []
-        # Stepper kinematics code
-        ffi_main, ffi_lib = chelper.get_ffi()
-        self._set_time = ffi_lib.smooth_axis_set_time
-        self._set_sk = ffi_lib.smooth_axis_set_sk
         # Register gcode commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command("SET_SMOOTH_AXIS",
@@ -59,35 +51,31 @@ class SmoothAxis:
             self.stepper_kinematics.append(sk)
             self.orig_stepper_kinematics.append(orig_sk)
         # Configure initial values
-        config_smooth_x = self.smooth_x
-        config_smooth_y = self.smooth_y
-        self.smooth_x = self.smooth_y = 0.
-        self._set_smoothing(self.damping_ratio_x, self.damping_ratio_y,
-                            self.spring_period_x, self.spring_period_y,
-                            self.accel_comp_x, self.accel_comp_y,
-                            config_smooth_x, config_smooth_y)
-    def _set_smoothing(self, damping_ratio_x, damping_ratio_y
-                       , spring_period_x, spring_period_y
-                       , accel_comp_x, accel_comp_y
-                       , smooth_x, smooth_y):
-        old_smooth_time = max(self.smooth_x, self.smooth_y) * .5
-        new_smooth_time = max(smooth_x, smooth_y) * .5
+        self.hst_x = self.hst_y = 0.
+        self._set_smoothing(self.smoother_type,
+                            self.damping_ratio_x, self.damping_ratio_y,
+                            self.target_freq_x, self.target_freq_y)
+    def _set_smoothing(self, smoother_type
+                       , damping_ratio_x, damping_ratio_y
+                       , target_freq_x, target_freq_y):
+        ffi_main, ffi_lib = chelper.get_ffi()
+        old_smooth_time = max(self.hst_x, self.hst_y)
+        self.hst_x = ffi_lib.smooth_axis_get_half_smooth_time(self.smoother_type
+                , self.target_freq_x, self.damping_ratio_x)
+        self.hst_y = ffi_lib.smooth_axis_get_half_smooth_time(self.smoother_type
+                , self.target_freq_y, self.damping_ratio_y)
+        new_smooth_time = max(self.hst_x, self.hst_y)
         self.toolhead.note_step_generation_scan_time(new_smooth_time,
                                                      old_delay=old_smooth_time)
-        self.smooth_x = smooth_x
-        self.smooth_y = smooth_y
+        self.smoother_type = smoother_type
         self.damping_ratio_x = damping_ratio_x
         self.damping_ratio_y = damping_ratio_y
-        self.spring_period_x = spring_period_x
-        self.spring_period_y = spring_period_y
-        self.accel_comp_x = accel_comp_x
-        self.accel_comp_y = accel_comp_y
-        ffi_main, ffi_lib = chelper.get_ffi()
+        self.target_freq_x = target_freq_x
+        self.target_freq_y = target_freq_y
         for sk in self.stepper_kinematics:
-            ffi_lib.smooth_axis_set_time(sk, smooth_x, smooth_y)
-            ffi_lib.smooth_axis_set_damping_ratio(sk, damping_ratio_x,
-                                                  damping_ratio_y)
-            ffi_lib.smooth_axis_set_accel_comp(sk, accel_comp_x, accel_comp_y)
+            ffi_lib.smooth_axis_set_params(sk, smoother_type, smoother_type,
+                                           target_freq_x, target_freq_y,
+                                           damping_ratio_x, damping_ratio_y)
     cmd_SET_SMOOTH_AXIS_help = "Set cartesian time smoothing parameters"
     def cmd_SET_SMOOTH_AXIS(self, params):
         gcode = self.printer.lookup_object('gcode')
@@ -97,40 +85,27 @@ class SmoothAxis:
         damping_ratio_y = gcode.get_float(
                 'DAMPING_RATIO_Y', params, self.damping_ratio_y,
                 minval=0., maxval=1.)
-        spring_period_x = gcode.get_float('SPRING_PERIOD_X', params,
-                                          self.spring_period_x, minval=0.)
-        spring_period_y = gcode.get_float('SPRING_PERIOD_Y', params,
-                                          self.spring_period_y, minval=0.)
-        smooth_x = gcode.get_float('SMOOTH_X', params, self.smooth_x,
-                                   minval=0., maxval=.200)
-        smooth_y = gcode.get_float('SMOOTH_Y', params, self.smooth_y,
-                                   minval=0., maxval=.200)
-        if 'SPRING_PERIOD_X' in params and 'SMOOTH_X' not in params:
-            smooth_x = 2. * spring_period_x
-        if 'SPRING_PERIOD_Y' in params and 'SMOOTH_Y' not in params:
-            smooth_y = 2. * spring_period_y
-        accel_comp_x = gcode.get_float(
-                'ACCEL_COMP_X', params, self.accel_comp_x,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
-        accel_comp_y = gcode.get_float(
-                'ACCEL_COMP_Y', params, self.accel_comp_y,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
-        if 'SPRING_PERIOD_X' in params and 'ACCEL_COMP_X' not in params:
-            accel_comp_x = (spring_period_x / (2. * math.pi))**2
-        if 'SPRING_PERIOD_Y' in params and 'ACCEL_COMP_Y' not in params:
-            accel_comp_y = (spring_period_y / (2. * math.pi))**2
-        self._set_smoothing(damping_ratio_x, damping_ratio_y,
-                            spring_period_x, spring_period_y,
-                            accel_comp_x, accel_comp_y,
-                            smooth_x, smooth_y)
-        gcode.respond_info("damping_ratio_x:%.9f damping_ratio_y:%.9f "
-                           "spring_period_x:%.9f spring_period_y:%.9f "
-                           "accel_comp_x:%.9f accel_comp_y:%.9f "
-                           "smooth_x:%.6f smooth_y:%.6f" % (
-                               damping_ratio_x, damping_ratio_y
-                               , spring_period_x, spring_period_y
-                               , accel_comp_x, accel_comp_y
-                               , smooth_x, smooth_y))
+        target_freq_x = gcode.get_float('TARGET_FREQ_X', params,
+                                          self.target_freq_x, minval=0.)
+        target_freq_y = gcode.get_float('TARGET_FREQ_Y', params,
+                                          self.target_freq_y, minval=0.)
+        smoother_type = self.smoother_type
+        if 'SMOOTHER' in params:
+            smoother_type_str = gcode.get_str('SMOOTHER', params).lower()
+            if smoother_type_str not in self.smoothers:
+                raise self.gcode.error(
+                    "Requested smoother type '%s' is not supported" % (
+                        smoother_type_str))
+            smoother_type = self.smoothers[smoother_type_str]
+        self._set_smoothing(smoother_type, damping_ratio_x, damping_ratio_y,
+                            target_freq_x, target_freq_y)
+        smoother_type_str = self.smoothers.keys()[
+                self.smoothers.values().index(smoother_type)]
+        gcode.respond_info("smoother_type: %s "
+                           "target_freq_x:%.9f target_freq_y:%.9f "
+                           "damping_ratio_x:%.9f damping_ratio_y:%.9f" % (
+                               smoother_type_str, target_freq_x, target_freq_y,
+                               damping_ratio_x, damping_ratio_y))
 
 def load_config(config):
     return SmoothAxis(config)

@@ -1,6 +1,7 @@
 // Kinematic filter to smooth out cartesian XY movements
 //
-// Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2019-2020  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2020  Dmitry Butyugin <dmbutyugin@google.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
@@ -16,45 +17,37 @@
 
 // Calculate the definitive integral on part of a move
 static double
-move_integrate(struct move *m, int axis, double start, double end
-               , double time_offset, double hst
-               , double damping_comp, double accel_comp)
+move_integrate(const struct move *m, int axis, double start, double end
+               , double time_offset, const struct smoother *sm)
 {
     if (start < 0.)
         start = 0.;
     if (end > m->move_t)
         end = m->move_t;
     double axis_r = m->axes_r.axis[axis - 'x'];
-    double start_pos = m->start_pos.axis[axis - 'x'] + axis_r * (
-            2. * m->half_accel * accel_comp + m->start_v * damping_comp);
-    double start_v = axis_r * (m->start_v + 2. * m->half_accel * damping_comp);
-    double res = integrate_weighted(start_pos, start_v, axis_r * m->half_accel
-                                    , start, end, time_offset, hst);
-    if (accel_comp)
-        res += accel_comp * integrate_velocity_jumps(
-                axis_r * m->start_v, axis_r * m->half_accel,
-                start, end, time_offset, hst);
+    double start_pos = m->start_pos.axis[axis - 'x'];
+    double res = integrate_weighted(sm, start_pos,
+                                    axis_r * m->start_v, axis_r * m->half_accel,
+                                    start, end, time_offset);
     return res;
 }
 
 // Calculate the definitive integral for a range of moves
 static double
-range_integrate(struct move *m, int axis, double move_time, double hst
-                , double damping_comp, double accel_comp)
+range_integrate(const struct move *m, int axis, double move_time
+                , const struct smoother *sm)
 {
     // Calculate integral for the current move
-    double start = move_time - hst, end = move_time + hst;
+    double start = move_time - sm->hst, end = move_time + sm->hst;
     double offset = -move_time;
-    double res = move_integrate(m, axis, start, end, offset, hst
-                                , damping_comp, accel_comp);
+    double res = move_integrate(m, axis, start, end, offset, sm);
     // Integrate over previous moves
-    struct move *prev = m;
+    const struct move *prev = m;
     while (unlikely(start < 0.)) {
         prev = list_prev_entry(prev, node);
         start += prev->move_t;
         offset -= prev->move_t;
-        res += move_integrate(prev, axis, start, prev->move_t, offset, hst
-                              , damping_comp, accel_comp);
+        res += move_integrate(prev, axis, start, prev->move_t, offset, sm);
     }
     // Integrate over future moves
     offset = -move_time;
@@ -62,32 +55,23 @@ range_integrate(struct move *m, int axis, double move_time, double hst
         end -= m->move_t;
         offset += m->move_t;
         m = list_next_entry(m, node);
-        res += move_integrate(m, axis, 0., end, offset, hst
-                              , damping_comp, accel_comp);
+        res += move_integrate(m, axis, 0., end, offset, sm);
     }
     return res;
 }
 
-// Calculate average position over smooth_time window
+// Calculate average position using the specified smoother
 static inline double
-calc_position(struct move *m, int axis, double move_time
-              , double hst, double inv_norm
-              , double damping_ratio, double accel_comp)
+calc_position(const struct move *m, int axis, double move_time
+              , const struct smoother *sm)
 {
-    accel_comp *= (1. - damping_ratio * damping_ratio);
-    double damping_comp = 2. * damping_ratio * sqrt(accel_comp);
-    double area = range_integrate(m, axis, move_time, hst
-                                  , damping_comp, accel_comp);
-    return area * inv_norm;
+    return range_integrate(m, axis, move_time, sm);
 }
 
 struct smooth_axis {
     struct stepper_kinematics sk;
     struct stepper_kinematics *orig_sk;
-    double x_half_smooth_time, x_inv_norm;
-    double y_half_smooth_time, y_inv_norm;
-    double x_accel_comp, y_accel_comp;
-    double x_damping_ratio, y_damping_ratio;
+    struct smoother *x_smoother, *y_smoother;
     struct move m;
 };
 
@@ -99,11 +83,9 @@ smooth_x_calc_position(struct stepper_kinematics *sk, struct move *m
                        , double move_time)
 {
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    double hst = sa->x_half_smooth_time;
-    if (!hst)
+    if (!sa->x_smoother)
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
-    sa->m.start_pos.x = calc_position(m, 'x', move_time, hst, sa->x_inv_norm
-                                      , sa->x_damping_ratio, sa->x_accel_comp);
+    sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
@@ -113,11 +95,9 @@ smooth_y_calc_position(struct stepper_kinematics *sk, struct move *m
                        , double move_time)
 {
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    double hst = sa->y_half_smooth_time;
-    if (!hst)
+    if (!sa->y_smoother)
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
-    sa->m.start_pos.y = calc_position(m, 'y', move_time, hst, sa->y_inv_norm
-                                      , sa->y_damping_ratio, sa->y_accel_comp);
+    sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
@@ -127,59 +107,49 @@ smooth_xy_calc_position(struct stepper_kinematics *sk, struct move *m
                         , double move_time)
 {
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    double x_hst = sa->x_half_smooth_time;
-    double y_hst = sa->y_half_smooth_time;
-    if (!x_hst && !y_hst)
+    if (!sa->x_smoother && !sa->y_smoother)
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
     sa->m.start_pos = move_get_coord(m, move_time);
-    if (x_hst)
-        sa->m.start_pos.x = calc_position(m, 'x', move_time, x_hst
-                                          , sa->x_inv_norm
-                                          , sa->x_damping_ratio
-                                          , sa->x_accel_comp);
-    if (y_hst)
-        sa->m.start_pos.y = calc_position(m, 'y', move_time, y_hst
-                                          , sa->y_inv_norm
-                                          , sa->y_damping_ratio
-                                          , sa->y_accel_comp);
+    if (sa->x_smoother)
+        sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother);
+    if (sa->y_smoother)
+        sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
 void __visible
-smooth_axis_set_time(struct stepper_kinematics *sk
-                     , double smooth_x, double smooth_y)
+smooth_axis_set_params(struct stepper_kinematics *sk
+                       , int smoother_type_x, int smoother_type_y
+                       , double target_freq_x, double target_freq_y
+                       , double damping_ratio_x, double damping_ratio_y)
 {
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    double x_hst = .5 * smooth_x, y_hst = .5 * smooth_y;
-    sa->x_half_smooth_time = x_hst;
-    sa->x_inv_norm = calc_inv_norm(x_hst);
-    sa->y_half_smooth_time = y_hst;
-    sa->y_inv_norm = calc_inv_norm(y_hst);
+    free(sa->x_smoother);
+    free(sa->y_smoother);
+    sa->x_smoother = target_freq_x ?
+        alloc_smoother(smoother_type_x, target_freq_x, damping_ratio_x) : NULL;
+    sa->y_smoother = target_freq_y ?
+        alloc_smoother(smoother_type_y, target_freq_y, damping_ratio_y) : NULL;
 
     double hst = 0.;
-    if (sa->sk.active_flags & AF_X)
-        hst = x_hst;
-    if (sa->sk.active_flags & AF_Y)
-        hst = y_hst > hst ? y_hst : hst;
+    if ((sa->sk.active_flags & AF_X) && (sa->x_smoother))
+        hst = sa->x_smoother->hst;
+    if ((sa->sk.active_flags & AF_Y) && (sa->y_smoother))
+        hst = sa->y_smoother->hst > hst ? sa->y_smoother->hst : hst;
     sa->sk.gen_steps_pre_active = sa->sk.gen_steps_post_active = hst;
 }
 
-void __visible
-smooth_axis_set_damping_ratio(struct stepper_kinematics *sk
-                             , double damping_ratio_x, double damping_ratio_y)
+double __visible
+smooth_axis_get_half_smooth_time(int smoother_type, double target_freq
+                                 , double damping_ratio)
 {
-    struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    sa->x_damping_ratio = damping_ratio_x;
-    sa->y_damping_ratio = damping_ratio_y;
-}
-
-void __visible
-smooth_axis_set_accel_comp(struct stepper_kinematics *sk
-                           , double accel_comp_x, double accel_comp_y)
-{
-    struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    sa->x_accel_comp = accel_comp_x;
-    sa->y_accel_comp = accel_comp_y;
+    struct smoother *sm = alloc_smoother(smoother_type, target_freq,
+                                         damping_ratio);
+    if (!sm)
+        return 0.;
+    double hst = sm->hst;
+    free(sm);
+    return hst;
 }
 
 int __visible

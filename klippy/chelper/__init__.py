@@ -106,12 +106,20 @@ defs_kin_extruder = """
 """
 
 defs_kin_smooth_axis = """
-    void smooth_axis_set_time(struct stepper_kinematics *sk
-        , double smooth_x, double smooth_y);
-    void smooth_axis_set_damping_ratio(struct stepper_kinematics *sk
+    enum SMOOTHER_TYPE {
+        SIFP05 = 1,
+        SIAF05 = 2,
+        DFSF05 = 3,
+        DFAF05 = 4,
+        DFAF02 = 5,
+        DFAF01 = 6,
+    };
+    double smooth_axis_get_half_smooth_time(int smoother_type
+        , double target_freq, double damping_ratio);
+    void smooth_axis_set_params(struct stepper_kinematics *sk
+        , int smoother_type_x, int smoother_type_y
+        , double target_freq_x, double target_freq_y
         , double damping_ratio_x, double damping_ratio_y);
-    void smooth_axis_set_accel_comp(struct stepper_kinematics *sk
-        , double accel_comp_x, double accel_comp_y);
     int smooth_axis_set_sk(struct stepper_kinematics *sk
         , struct stepper_kinematics *orig_sk);
     struct stepper_kinematics * smooth_axis_alloc(void);
