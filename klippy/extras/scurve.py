@@ -132,19 +132,18 @@ class SCurve:
         # Inject new get_max_axis_halt computation
         default_get_max_axis_halt = self.toolhead.get_max_axis_halt
     cmd_SET_SCURVE_help = "Set S-Curve parameters"
-    def cmd_SET_SCURVE(self, params):
-        gcode = self.printer.lookup_object('gcode')
-        accel_order = gcode.get_int(
-            'ACCEL_ORDER', params, self.accel_order, minval=2, maxval=6)
+    def cmd_SET_SCURVE(self, gcmd):
+        accel_order = gcmd.get_int(
+            'ACCEL_ORDER', self.accel_order, minval=2, maxval=6)
         if accel_order not in [2, 4, 6]:
-            raise gcode.error(
+            raise gcmd.error(
                     "ACCEL_ORDER = %s is not a valid choice" % (accel_order,))
         self.accel_order = accel_order
-        self.max_jerk = gcode.get_float('JERK', params, self.max_jerk, above=0.)
+        self.max_jerk = gcmd.get_float('JERK', self.max_jerk, above=0.)
         msg = ("accel_order: %d max_jerk: %.6f"%(
                    accel_order, self.max_jerk))
         self.printer.set_rollover_info("scurve", "scurve: %s" % (msg,))
-        gcode.respond_info(msg, log=False)
+        gcmd.respond_info(msg, log=False)
 
 def load_config(config):
     return SCurve(config)
