@@ -1,6 +1,7 @@
 # Positional smoother on cartesian XY axes
 #
-# Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+# Copyright (C) 2019-2020  Kevin O'Connor <kevin@koconnor.net>
+# Copyright (C) 2020  Dmitry Butyugin <dmbutyugin@google.com>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging
@@ -77,49 +78,48 @@ class SmoothAxis:
                                                   damping_ratio_y)
             ffi_lib.smooth_axis_set_accel_comp(sk, accel_comp_x, accel_comp_y)
     cmd_SET_SMOOTH_AXIS_help = "Set cartesian time smoothing parameters"
-    def cmd_SET_SMOOTH_AXIS(self, params):
-        gcode = self.printer.lookup_object('gcode')
-        damping_ratio_xy = gcode.get_float(
-                'DAMPING_RATIO_XY', params, -1.0, minval=-1.0, maxval=1.)
+    def cmd_SET_SMOOTH_AXIS(self, gcmd):
+        damping_ratio_xy = gcmd.get_float(
+                'DAMPING_RATIO_XY', -1.0, minval=-1.0, maxval=1.)
         if damping_ratio_xy < 0:
-            damping_ratio_x = gcode.get_float(
-                    'DAMPING_RATIO_X', params, self.damping_ratio_x,
+            damping_ratio_x = gcmd.get_float(
+                    'DAMPING_RATIO_X', self.damping_ratio_x,
                     minval=0., maxval=1.)
-            damping_ratio_y = gcode.get_float(
-                    'DAMPING_RATIO_Y', params, self.damping_ratio_y,
+            damping_ratio_y = gcmd.get_float(
+                    'DAMPING_RATIO_Y', self.damping_ratio_y,
                     minval=0., maxval=1.)
         else:
             damping_ratio_x = damping_ratio_y = damping_ratio_xy
-        accel_comp_xy = gcode.get_float(
-                'ACCEL_COMP_XY', params, -1.0,
+        accel_comp_xy = gcmd.get_float(
+                'ACCEL_COMP_XY', -1.0,
                 minval=-1.0, maxval=MAX_ACCEL_COMPENSATION)
         if accel_comp_xy < 0:
-            accel_comp_x = gcode.get_float(
-                    'ACCEL_COMP_X', params, self.accel_comp_x,
+            accel_comp_x = gcmd.get_float(
+                    'ACCEL_COMP_X', self.accel_comp_x,
                     minval=0., maxval=MAX_ACCEL_COMPENSATION)
-            accel_comp_y = gcode.get_float(
-                    'ACCEL_COMP_Y', params, self.accel_comp_y,
+            accel_comp_y = gcmd.get_float(
+                    'ACCEL_COMP_Y', self.accel_comp_y,
                     minval=0., maxval=MAX_ACCEL_COMPENSATION)
         else:
             accel_comp_x = accel_comp_y = accel_comp_xy
-        smooth_xy = gcode.get_float('SMOOTH_XY', params, -1.0,
-                                    minval=-1.0, maxval=.200)
+        smooth_xy = gcmd.get_float('SMOOTH_XY', -1.0,
+                                   minval=-1.0, maxval=.200)
         if smooth_xy < 0:
-            smooth_x = gcode.get_float('SMOOTH_X', params, self.smooth_x,
-                                       minval=0., maxval=.200)
-            smooth_y = gcode.get_float('SMOOTH_Y', params, self.smooth_y,
-                                       minval=0., maxval=.200)
+            smooth_x = gcmd.get_float('SMOOTH_X', self.smooth_x,
+                                      minval=0., maxval=.200)
+            smooth_y = gcmd.get_float('SMOOTH_Y', self.smooth_y,
+                                      minval=0., maxval=.200)
         else:
             smooth_x = smooth_y = smooth_xy
         self._set_smoothing(damping_ratio_x, damping_ratio_y,
                             accel_comp_x, accel_comp_y,
                             smooth_x, smooth_y)
-        gcode.respond_info("damping_ratio_x:%.9f damping_ratio_y:%.9f "
-                           "accel_comp_x:%.9f accel_comp_y:%.9f "
-                           "smooth_x:%.6f smooth_y:%.6f" % (
-                               damping_ratio_x, damping_ratio_y
-                               , accel_comp_x, accel_comp_y
-                               , smooth_x, smooth_y))
+        gcmd.respond_info("damping_ratio_x:%.9f damping_ratio_y:%.9f "
+                          "accel_comp_x:%.9f accel_comp_y:%.9f "
+                          "smooth_x:%.6f smooth_y:%.6f" % (
+                              damping_ratio_x, damping_ratio_y
+                              , accel_comp_x, accel_comp_y
+                              , smooth_x, smooth_y))
 
 def load_config(config):
     return SmoothAxis(config)
