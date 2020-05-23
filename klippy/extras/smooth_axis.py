@@ -77,35 +77,34 @@ class SmoothAxis:
                                            target_freq_x, target_freq_y,
                                            damping_ratio_x, damping_ratio_y)
     cmd_SET_SMOOTH_AXIS_help = "Set cartesian time smoothing parameters"
-    def cmd_SET_SMOOTH_AXIS(self, params):
-        gcode = self.printer.lookup_object('gcode')
-        damping_ratio_x = gcode.get_float(
-                'DAMPING_RATIO_X', params, self.damping_ratio_x,
-                minval=0., maxval=1.)
-        damping_ratio_y = gcode.get_float(
-                'DAMPING_RATIO_Y', params, self.damping_ratio_y,
-                minval=0., maxval=1.)
-        target_freq_x = gcode.get_float('TARGET_FREQ_X', params,
-                                          self.target_freq_x, minval=0.)
-        target_freq_y = gcode.get_float('TARGET_FREQ_Y', params,
-                                          self.target_freq_y, minval=0.)
-        smoother_type = self.smoother_type
-        if 'SMOOTHER' in params:
-            smoother_type_str = gcode.get_str('SMOOTHER', params).lower()
+    def cmd_SET_SMOOTH_AXIS(self, gcmd):
+        damping_ratio_x = gcmd.get_float(
+                'DAMPING_RATIO_X', self.damping_ratio_x, minval=0., maxval=1.)
+        damping_ratio_y = gcmd.get_float(
+                'DAMPING_RATIO_Y', self.damping_ratio_y, minval=0., maxval=1.)
+        target_freq_x = gcmd.get_float('TARGET_FREQ_X',
+                                       self.target_freq_x, minval=0.)
+        target_freq_y = gcmd.get_float('TARGET_FREQ_Y',
+                                       self.target_freq_y, minval=0.)
+        smoother_type_str = gcmd.get('SMOOTHER', None)
+        if smoother_type_str is not None:
+            smoother_type_str = smoother_type_str.lower()
             if smoother_type_str not in self.smoothers:
-                raise self.gcode.error(
+                raise self.printer.command_error(
                     "Requested smoother type '%s' is not supported" % (
                         smoother_type_str))
             smoother_type = self.smoothers[smoother_type_str]
+        else:
+            smoother_type = self.smoother_type
         self._set_smoothing(smoother_type, damping_ratio_x, damping_ratio_y,
                             target_freq_x, target_freq_y)
         smoother_type_str = self.smoothers.keys()[
                 self.smoothers.values().index(smoother_type)]
-        gcode.respond_info("smoother_type: %s "
-                           "target_freq_x:%.9f target_freq_y:%.9f "
-                           "damping_ratio_x:%.9f damping_ratio_y:%.9f" % (
-                               smoother_type_str, target_freq_x, target_freq_y,
-                               damping_ratio_x, damping_ratio_y))
+        gcmd.respond_info("smoother_type: %s "
+                          "target_freq_x:%.9f target_freq_y:%.9f "
+                          "damping_ratio_x:%.9f damping_ratio_y:%.9f" % (
+                              smoother_type_str, target_freq_x, target_freq_y,
+                              damping_ratio_x, damping_ratio_y))
 
 def load_config(config):
     return SmoothAxis(config)
