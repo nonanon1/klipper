@@ -67,7 +67,7 @@ class InputShaper:
             return .5 * damped_spring_period
         if shaper_type == ffi_lib.INPUT_SHAPER_2HUMP_EI:
             return .75 * damped_spring_period
-        raise self.gcode.error(
+        raise self.printer.command_error(
             "Shaper type '%d' is not supported" % (shaper_type))
     def _set_input_shaper(self, damping_ratio, spring_period, shaper_type):
         if shaper_type != self.shaper_type:
@@ -85,23 +85,22 @@ class InputShaper:
         ffi_lib.input_shaper_set_shaper_params(self.sk
                 , damped_spring_period, damping_ratio, shaper_type)
     cmd_SET_INPUT_SHAPER_help = "Set cartesian parameters for input shaper"
-    def cmd_SET_INPUT_SHAPER(self, params):
-        gcode = self.printer.lookup_object('gcode')
-        damping_ratio = gcode.get_float('DAMPING_RATIO', params,
-                                        self.damping_ratio,
-                                        minval=0., maxval=1.)
-        spring_period = gcode.get_float('SPRING_PERIOD', params,
-                                        self.spring_period, minval=0.)
+    def cmd_SET_INPUT_SHAPER(self, gcmd):
+        damping_ratio = gcmd.get_float(
+                'DAMPING_RATIO', self.damping_ratio, minval=0., maxval=1.)
+        spring_period = gcmd.get_float(
+                'SPRING_PERIOD', self.spring_period, minval=0.)
         shaper_type = self.shaper_type
-        if 'TYPE' in params:
-            shaper_type_str = gcode.get_str('TYPE', params).lower()
+        shaper_type_str = gcmd.get('TYPE', None)
+        if shaper_type_str is not None:
+            shaper_type_str = shaper_type_str.lower()
             if shaper_type_str not in self.shapers:
-                raise self.gcode.error(
+                raise gcmd.error(
                     "Requested shaper type '%s' is not supported" % (
                         shaper_type_str))
             shaper_type = self.shapers[shaper_type_str]
         self._set_input_shaper(damping_ratio, spring_period, shaper_type)
-        gcode.respond_info("damping_ratio:%.9f spring_period:%.9f "
+        gcmd.respond_info("damping_ratio:%.9f spring_period:%.9f "
                            "shaper_type: %s" % (
                                damping_ratio , spring_period
                                , self.shapers.keys()[
