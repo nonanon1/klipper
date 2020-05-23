@@ -70,7 +70,7 @@ class InputShaper:
             return .5 * damped_spring_period
         if shaper_type == ffi_lib.INPUT_SHAPER_2HUMP_EI:
             return .75 * damped_spring_period
-        raise self.gcode.error(
+        raise self.printer.command_error(
             "Shaper type '%d' is not supported" % (shaper_type))
     def _set_input_shaper(self, damping_ratio_x, damping_ratio_y
                           , spring_period_x, spring_period_y, shaper_type):
@@ -95,35 +95,33 @@ class InputShaper:
                     , damped_spring_period_x, damped_spring_period_y
                     , damping_ratio_x, damping_ratio_y, shaper_type)
     cmd_SET_INPUT_SHAPER_help = "Set cartesian parameters for input shaper"
-    def cmd_SET_INPUT_SHAPER(self, params):
-        gcode = self.printer.lookup_object('gcode')
-        damping_ratio_x = gcode.get_float('DAMPING_RATIO_X', params,
-                                         self.damping_ratio_x, minval=0.,
-                                         maxval=1.)
-        damping_ratio_y = gcode.get_float('DAMPING_RATIO_Y', params,
-                                         self.damping_ratio_y, minval=0.,
-                                         maxval=1.)
-        spring_period_x = gcode.get_float('SPRING_PERIOD_X', params,
-                                          self.spring_period_x, minval=0.)
-        spring_period_y = gcode.get_float('SPRING_PERIOD_Y', params,
-                                          self.spring_period_y, minval=0.)
+    def cmd_SET_INPUT_SHAPER(self, gcmd):
+        damping_ratio_x = gcmd.get_float(
+                'DAMPING_RATIO_X', self.damping_ratio_x, minval=0., maxval=1.)
+        damping_ratio_y = gcmd.get_float(
+                'DAMPING_RATIO_Y', self.damping_ratio_y, minval=0., maxval=1.)
+        spring_period_x = gcmd.get_float(
+                'SPRING_PERIOD_X', self.spring_period_x, minval=0.)
+        spring_period_y = gcmd.get_float(
+                'SPRING_PERIOD_Y', self.spring_period_y, minval=0.)
         shaper_type = self.shaper_type
-        if 'TYPE' in params:
-            shaper_type_str = gcode.get_str('TYPE', params).lower()
+        shaper_type_str = gcmd.get('TYPE', None)
+        if shaper_type_str is not None:
+            shaper_type_str = shaper_type_str.lower()
             if shaper_type_str not in self.shapers:
-                raise self.gcode.error(
+                raise gcmd.error(
                     "Requested shaper type '%s' is not supported" % (
                         shaper_type_str))
             shaper_type = self.shapers[shaper_type_str]
         self._set_input_shaper(damping_ratio_x, damping_ratio_y,
                                spring_period_x, spring_period_y, shaper_type)
-        gcode.respond_info("damping_ratio_x:%.9f damping_ratio_y:%.9f "
-                           "spring_period_x:%.9f spring_period_y:%.9f "
-                           "shaper_type: %s" % (
-                               damping_ratio_x, damping_ratio_y
-                               , spring_period_x, spring_period_y
-                               , self.shapers.keys()[
-                                   self.shapers.values().index(shaper_type)]))
+        gcmd.respond_info("damping_ratio_x:%.9f damping_ratio_y:%.9f "
+                          "spring_period_x:%.9f spring_period_y:%.9f "
+                          "shaper_type: %s" % (
+                              damping_ratio_x, damping_ratio_y
+                              , spring_period_x, spring_period_y
+                              , self.shapers.keys()[
+                                  self.shapers.values().index(shaper_type)]))
 
 def load_config(config):
     return InputShaper(config)
