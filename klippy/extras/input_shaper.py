@@ -4,7 +4,6 @@
 # Copyright (C) 2020  Dmitry Butyugin <dmbutyugin@google.com>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import math
 import chelper
 
 class InputShaper:
@@ -56,33 +55,16 @@ class InputShaper:
         self._set_input_shaper(self.damping_ratio_x, self.damping_ratio_y,
                                self.spring_period_x, self.spring_period_y,
                                self.shaper_type)
-    def _get_step_generation_window(self, ffi_lib, shaper_type
-                                    , damped_spring_period):
-        if shaper_type == ffi_lib.INPUT_SHAPER_ZV:
-            return .25 * damped_spring_period
-        if shaper_type == ffi_lib.INPUT_SHAPER_ZVD:
-            return .5 * damped_spring_period
-        if shaper_type == ffi_lib.INPUT_SHAPER_ZVDD:
-            return .75 * damped_spring_period
-        if shaper_type == ffi_lib.INPUT_SHAPER_ZVDDD:
-            return damped_spring_period
-        if shaper_type == ffi_lib.INPUT_SHAPER_EI:
-            return .5 * damped_spring_period
-        if shaper_type == ffi_lib.INPUT_SHAPER_2HUMP_EI:
-            return .75 * damped_spring_period
-        raise self.printer.command_error(
-            "Shaper type '%d' is not supported" % (shaper_type))
     def _set_input_shaper(self, damping_ratio_x, damping_ratio_y
                           , spring_period_x, spring_period_y, shaper_type):
         if shaper_type != self.shaper_type:
             self.toolhead.flush_step_generation()
-        damped_spring_period_x = spring_period_x / math.sqrt(
-                1. - damping_ratio_x**2)
-        damped_spring_period_y = spring_period_y / math.sqrt(
-                1. - damping_ratio_y**2)
         ffi_main, ffi_lib = chelper.get_ffi()
-        new_delay = self._get_step_generation_window(ffi_lib, shaper_type
-                , max(damped_spring_period_x, damped_spring_period_y))
+        new_delay = max(
+                ffi_lib.input_shaper_get_step_generation_window(
+                    shaper_type, spring_period_x, damping_ratio_x),
+                ffi_lib.input_shaper_get_step_generation_window(
+                    shaper_type, spring_period_y, damping_ratio_y))
         self.toolhead.note_step_generation_scan_time(new_delay,
                                                      old_delay=self.old_delay)
         self.damping_ratio_x = damping_ratio_x
@@ -92,7 +74,7 @@ class InputShaper:
         self.shaper_type = shaper_type
         for sk in self.stepper_kinematics:
             ffi_lib.input_shaper_set_shaper_params(sk
-                    , damped_spring_period_x, damped_spring_period_y
+                    , spring_period_x, spring_period_y
                     , damping_ratio_x, damping_ratio_y, shaper_type)
     cmd_SET_INPUT_SHAPER_help = "Set cartesian parameters for input shaper"
     def cmd_SET_INPUT_SHAPER(self, gcmd):
