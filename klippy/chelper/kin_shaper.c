@@ -60,8 +60,8 @@ init_shaper_zv(struct input_shaper *is, double half_period, double damping_ratio
     double K = calc_ZV_K(damping_ratio);
     double inv_D = 1. / (1. + K);
 
-    is->pulses[0].t = -.5 * half_period;
-    is->pulses[1].t = .5 * half_period;
+    is->pulses[0].t = -half_period;
+    is->pulses[1].t = 0.;
 
     is->pulses[0].a = K * inv_D;
     is->pulses[1].a = inv_D;
@@ -77,9 +77,9 @@ init_shaper_zvd(struct input_shaper *is, double half_period, double damping_rati
     double K2 = K * K;
     double inv_D = 1. / (K2 + 2. * K + 1.);
 
-    is->pulses[0].t = -half_period;
-    is->pulses[1].t = 0.;
-    is->pulses[2].t = half_period;
+    is->pulses[0].t = -2. * half_period;
+    is->pulses[1].t = -half_period;
+    is->pulses[2].t = 0.;
 
     is->pulses[0].a = K2 * inv_D;
     is->pulses[1].a = 2. * K * inv_D;
@@ -97,10 +97,10 @@ init_shaper_zvdd(struct input_shaper *is, double half_period, double damping_rat
     double K3 = K2 * K;
     double inv_D = 1. / (K3 + 3. * K2 + 3. * K + 1);
 
-    is->pulses[0].t = -1.5 * half_period;
-    is->pulses[1].t = -.5 * half_period;
-    is->pulses[2].t = .5 * half_period;
-    is->pulses[3].t = 1.5 * half_period;
+    is->pulses[0].t = -3. * half_period;
+    is->pulses[1].t = -2. * half_period;
+    is->pulses[2].t = -half_period;
+    is->pulses[3].t = 0.;
 
     is->pulses[0].a = K3 * inv_D;
     is->pulses[1].a = 3. * K2 * inv_D;
@@ -120,11 +120,11 @@ init_shaper_zvddd(struct input_shaper *is, double half_period, double damping_ra
     double K4 = K3 * K;
     double inv_D = 1. / (K4 + 4. * K3 + 6. * K2 + 4. * K + 1.);
 
-    is->pulses[0].t = -2. * half_period;
-    is->pulses[1].t = -1. * half_period;
-    is->pulses[2].t = 0.;
-    is->pulses[3].t = 1. * half_period;
-    is->pulses[4].t = 2. * half_period;
+    is->pulses[0].t = -4. * half_period;
+    is->pulses[1].t = -3. * half_period;
+    is->pulses[2].t = -2. * half_period;
+    is->pulses[3].t = -half_period;
+    is->pulses[4].t = 0.;
 
     is->pulses[0].a = K4 * inv_D;
     is->pulses[1].a = 4. * K3 * inv_D;
@@ -144,9 +144,9 @@ init_shaper_ei(struct input_shaper *is, double half_period, double damping_ratio
     double a3 = k * k;
     double inv_D = 1. / (1. + a2 + a3);
 
-    is->pulses[0].t = -half_period;
-    is->pulses[1].t = 0.;
-    is->pulses[2].t = half_period;
+    is->pulses[0].t = -2. * half_period;
+    is->pulses[1].t = -half_period;
+    is->pulses[2].t = 0.;
 
     is->pulses[0].a = a3 * inv_D;
     is->pulses[1].a = a2 * inv_D;
@@ -164,10 +164,10 @@ init_shaper_2hump_ei(struct input_shaper *is, double half_period, double damping
     double d_r3 = d_r2 * d_r;
 
     // Coefficients calculated for 5% vibration tolerance
-    double t1 = -.75;
-    double t2 = 0.49890 - .75 + 0.16270 * d_r - 0.54262 * d_r2 + 6.16180 * d_r3;
-    double t3 = 0.99748 - .75 + 0.18382 * d_r - 1.58270 * d_r2 + 8.17120 * d_r3;
-    double t4 = 1.49920 - .75 - 0.09297 * d_r - 0.28338 * d_r2 + 1.85710 * d_r3;
+    double t1 = 0.;
+    double t2 = 0.49890 + 0.16270 * d_r - 0.54262 * d_r2 + 6.16180 * d_r3;
+    double t3 = 0.99748 + 0.18382 * d_r - 1.58270 * d_r2 + 8.17120 * d_r3;
+    double t4 = 1.49920 - 0.09297 * d_r - 0.28338 * d_r2 + 1.85710 * d_r3;
 
     double a1 = 0.16054 + 0.76699 * d_r + 2.26560 * d_r2 - 1.22750 * d_r3;
     double a2 = 0.33911 + 0.45081 * d_r - 2.58080 * d_r2 + 1.73650 * d_r3;
@@ -188,6 +188,19 @@ init_shaper_2hump_ei(struct input_shaper *is, double half_period, double damping
     is->pulses[1].a = a3 * inv_D;
     is->pulses[2].a = a2 * inv_D;
     is->pulses[3].a = a1 * inv_D;
+}
+
+// Shift pulses around 'mid-point' t=0 so that the input shaper is an identity
+// transformation for constant-speed motion (i.e. input_shaper(v * T) = v * T)
+static void
+shift_pulses(int n, struct shaper_pulse *pulses)
+{
+    int i;
+    double ts = 0.;
+    for (i = 0; i < n; ++i)
+        ts += pulses[i].a * pulses[i].t;
+    for (i = 0; i < n; ++i)
+        pulses[i].t -= ts;
 }
 
 /****************************************************************
@@ -260,6 +273,7 @@ input_shaper_set_shaper_params(struct stepper_kinematics *sk
     is_init_shaper_callback init_shaper_cb = init_shaper_callbacks[shaper_type];
     free(is->pulses);
     init_shaper_cb(is, .5 * damped_spring_period, damping_ratio);
+    shift_pulses(is->n, is->pulses);
     shaper_note_generation_time(is);
     return 0;
 }
