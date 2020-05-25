@@ -26,6 +26,7 @@ enum INPUT_SHAPER_TYPE {
     INPUT_SHAPER_ZVDDD = 3,
     INPUT_SHAPER_EI = 4,
     INPUT_SHAPER_2HUMP_EI = 5,
+    INPUT_SHAPER_3HUMP_EI = 6,
 };
 
 struct shaper_pulse {
@@ -206,6 +207,48 @@ init_shaper_2hump_ei(struct input_shaper *is, double target_period
     is->pulses[3].a = a1 * inv_D;
 }
 
+static void
+init_shaper_3hump_ei(double target_period, double damping_ratio
+                     , struct shaper_pulse **pulses, int *n)
+{
+    is->n = 5;
+    is->pulses = malloc(is->n * sizeof(struct shaper_pulse));
+
+    double d_r = damping_ratio;
+    double d_r2 = d_r * d_r;
+    double d_r3 = d_r2 * d_r;
+
+    // Coefficients calculated for 5% vibration tolerance
+    double t1 = 0.;
+    double t2 = 0.49974 + 0.23834 * d_r + 0.44559 * d_r2 + 12.4720 * d_r3;
+    double t3 = 0.99849 + 0.29808 * d_r - 2.36460 * d_r2 + 23.3990 * d_r3;
+    double t4 = 1.49870 + 0.10306 * d_r - 2.01390 * d_r2 + 17.0320 * d_r3;
+    double t5 = 1.99960 - 0.28231 * d_r + 0.61536 * d_r2 + 5.40450 * d_r3;
+
+    double a1 = 0.11275 + 0.76632 * d_r + 3.29160 * d_r2 - 1.44380 * d_r3;
+    double a2 = 0.23698 + 0.61164 * d_r - 2.57850 * d_r2 + 4.85220 * d_r3;
+    double a3 = 0.30008 - 0.19062 * d_r - 2.14560 * d_r2 + 0.13744 * d_r3;
+    double a4 = 0.23775 - 0.73297 * d_r + 0.46885 * d_r2 - 2.08650 * d_r3;
+    double a5 = 0.11244 - 0.45439 * d_r + 0.96382 * d_r2 - 1.46000 * d_r3;
+
+    // Coefficients aN should normally sum up to 1. already, but since we use
+    // a polynomial expansion, they can get slightly off. So it is better to
+    // re-normalize them to avoid tiny potential print scaling problems.
+    double inv_D = 1. / (a1 + a2 + a3 + a4 + a5);
+
+    is->pulses[0].t = -target_period * t5;
+    is->pulses[1].t = -target_period * t4;
+    is->pulses[2].t = -target_period * t3;
+    is->pulses[3].t = -target_period * t2;
+    is->pulses[4].t = -target_period * t1;
+
+    is->pulses[0].a = a5 * inv_D;
+    is->pulses[1].a = a4 * inv_D;
+    is->pulses[2].a = a3 * inv_D;
+    is->pulses[3].a = a2 * inv_D;
+    is->pulses[4].a = a1 * inv_D;
+}
+
 // Shift pulses around 'mid-point' t=0 so that the input shaper is an identity
 // transformation for constant-speed motion (i.e. input_shaper(v * T) = v * T)
 static void
@@ -274,6 +317,7 @@ static is_init_shaper_callback init_shaper_callbacks[] = {
     [INPUT_SHAPER_ZVDDD] = &init_shaper_zvddd,
     [INPUT_SHAPER_EI] = &init_shaper_ei,
     [INPUT_SHAPER_2HUMP_EI] = &init_shaper_2hump_ei,
+    [INPUT_SHAPER_3HUMP_EI] = &init_shaper_3hump_ei,
 };
 
 int __visible

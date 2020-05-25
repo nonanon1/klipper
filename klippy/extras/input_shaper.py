@@ -22,7 +22,8 @@ class InputShaper:
                 , 'zvdd': ffi_lib.INPUT_SHAPER_ZVDD
                 , 'zvddd': ffi_lib.INPUT_SHAPER_ZVDDD
                 , 'ei': ffi_lib.INPUT_SHAPER_EI
-                , '2hump_ei': ffi_lib.INPUT_SHAPER_2HUMP_EI}
+                , '2hump_ei': ffi_lib.INPUT_SHAPER_2HUMP_EI
+                , '3hump_ei': ffi_lib.INPUT_SHAPER_3HUMP_EI}
         self.shaper_type = config.getchoice('type', self.shapers, 'zvd')
         # Register gcode commands
         gcode = self.printer.lookup_object('gcode')
