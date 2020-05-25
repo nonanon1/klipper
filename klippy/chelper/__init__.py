@@ -112,6 +112,7 @@ defs_kin_shaper = """
         INPUT_SHAPER_ZVDDD = 3,
         INPUT_SHAPER_EI = 4,
         INPUT_SHAPER_2HUMP_EI = 5,
+        INPUT_SHAPER_3HUMP_EI = 6,
     };
 
     double input_shaper_get_step_generation_window(int shaper_type
