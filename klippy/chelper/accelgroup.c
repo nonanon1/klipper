@@ -52,8 +52,6 @@ calc_max_v2(const struct accel_group* ag)
     // Check if accel is the limiting factor
     double start_v2 = ag->start_accel->max_start_v2;
     double max_accel_v2 = start_v2 + 2.0 * dist * ag->max_accel;
-    if (unlikely(ag->accel_order == 2))
-        return max_accel_v2;
     // Compute maximum achievable speed with limited kinematic jerk using
     // max(jerk) == 6 * accel / accel_time, which is exact for accel order 4
     // and is quite accurate for accel order 6:
@@ -84,8 +82,6 @@ calc_max_v2(const struct accel_group* ag)
 inline double
 calc_effective_accel(const struct accel_group *ag, double cruise_v)
 {
-    if (unlikely(ag->accel_order == 2))
-        return ag->max_accel;
     double effective_accel = sqrt(ag->max_jerk
             * (cruise_v - ag->start_accel->max_start_v) / 6.);
     if (unlikely(effective_accel > ag->max_accel))
@@ -102,11 +98,9 @@ calc_min_accel_time(const struct accel_group *ag, double cruise_v)
     if (fabs(delta_v) < 0.000000001)
         return 0.;
     double min_accel_time = delta_v / ag->max_accel;
-    if (likely(ag->accel_order > 2)) {
-        double accel_t = sqrt(6. * delta_v / ag->max_jerk);
-        if (likely(accel_t > min_accel_time))
-            min_accel_time = accel_t;
-    }
+    double accel_t = sqrt(6. * delta_v / ag->max_jerk);
+    if (likely(accel_t > min_accel_time))
+        min_accel_time = accel_t;
     if (likely(ag->min_accel)) {
         double accel_t = delta_v / ag->min_accel;
         if (unlikely(accel_t < min_accel_time))
@@ -131,17 +125,15 @@ calc_max_safe_v2(const struct accel_group *ag)
     double dist = ag->combined_d;
     double start_v2 = ag->start_accel->max_start_v2;
     double max_v2 = 2. * ag->max_accel * dist + start_v2;
-    if (likely(ag->accel_order > 2)) {
-        // It is possible to accelerate from any velocity to this one over the
-        // accumulated distance dist.
-        double v2 = pow((9./16.) * dist * dist * ag->max_jerk, (2./3.));
-        // Such min v2 is achieved when accelerating from v2 / 9 velocity.
-        // But if start_v2 is smaller than v2 / 9, it is sufficient to
-        // consider the worst-case acceleration from start_v2 only.
-        if (unlikely(start_v2 * 9. < v2))
-            v2 = calc_max_v2(ag);
-        max_v2 = MIN(max_v2, v2);
-    }
+    // It is possible to accelerate from any velocity to this one over the
+    // accumulated distance dist.
+    double v2 = pow((9./16.) * dist * dist * ag->max_jerk, (2./3.));
+    // Such min v2 is achieved when accelerating from v2 / 9 velocity.
+    // But if start_v2 is smaller than v2 / 9, it is sufficient to
+    // consider the worst-case acceleration from start_v2 only.
+    if (unlikely(start_v2 * 9. < v2))
+        v2 = calc_max_v2(ag);
+    max_v2 = MIN(max_v2, v2);
     return max_v2;
 }
 

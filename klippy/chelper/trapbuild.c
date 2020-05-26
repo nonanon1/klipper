@@ -18,12 +18,6 @@ calc_move_peak_v2(struct qmove *m)
 {
     struct accel_group *accel = &m->accel_group;
     struct accel_group *decel = &m->decel_group;
-    if (accel->accel_order == 2) {
-        double effective_accel = MIN(accel->max_accel, decel->max_accel);
-        double peak_v2 = (accel->max_start_v2 + decel->max_start_v2
-                + 2. * m->move_d * effective_accel) * .5;
-        return peak_v2;
-    }
     double total_d = accel->combined_d + decel->combined_d - m->move_d;
     double high_v = sqrt(MAX(accel->max_end_v2, decel->max_end_v2));
     double low_v = 0.;

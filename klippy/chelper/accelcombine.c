@@ -58,8 +58,7 @@ check_can_combine(struct accel_combiner *ac
     struct junction_point *prev_jp = list_last_entry(
             &ac->junctions, struct junction_point, node);
     struct accel_group *prev_accel = &prev_jp->accel;
-    return next_accel->accel_order != 2
-        && prev_accel->accel_order == next_accel->accel_order;
+    return prev_accel->accel_order == next_accel->accel_order;
 }
 
 static void
