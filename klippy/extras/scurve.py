@@ -110,7 +110,8 @@ class SCurve:
         self.printer.register_event_handler("klippy:connect", self.connect)
         self.toolhead = None
         self.min_jerk_limit_time = config.getfloat(
-                'min_jerk_limit_time', 0.02, minval=0.)
+                'min_jerk_limit_time', 0.02, above=0.)
+        self.min_accel = config.getfloat('min_accel', None, above=0.)
         self.max_jerk = config.getfloat('max_jerk', None, above=0.)
         self.accel_order = config.getchoice(
                 'acceleration_order', { "2": 2, "4": 4, "6": 6 }, "4")
@@ -121,16 +122,23 @@ class SCurve:
                                desc=self.cmd_SET_SCURVE_help)
     def connect(self):
         self.toolhead = self.printer.lookup_object("toolhead")
-        if not self.max_jerk:
-            max_velocity, max_accel = self.toolhead.get_max_velocity()
-            mjlt = self.min_jerk_limit_time
-            self.max_jerk = max_accel * (
-                    6. / (mjlt * RINGING_REDUCTION_FACTOR) if mjlt else 30.)
+        self._set_params(self.min_accel, self.max_jerk)
         # Inject a new move queue
         new_move_queue = AccelCombiningMoveQueue(self, self.toolhead)
         self.toolhead.replace_move_queue(new_move_queue)
         # Inject new get_max_axis_halt computation
         default_get_max_axis_halt = self.toolhead.get_max_axis_halt
+    def _set_params(self, min_accel, max_jerk):
+        mjlt = self.min_jerk_limit_time
+        if not max_jerk:
+            max_velocity, max_accel = self.toolhead.get_max_velocity()
+            if not min_accel:
+                min_accel = max_accel / RINGING_REDUCTION_FACTOR
+            max_jerk = min_accel * 6. / mjlt
+        else:
+            min_accel = max_jerk * mjlt / 6.
+        self.min_accel = min_accel
+        self.max_jerk = max_jerk
     cmd_SET_SCURVE_help = "Set S-Curve parameters"
     def cmd_SET_SCURVE(self, gcmd):
         accel_order = gcmd.get_int(
@@ -139,9 +147,12 @@ class SCurve:
             raise gcmd.error(
                     "ACCEL_ORDER = %s is not a valid choice" % (accel_order,))
         self.accel_order = accel_order
-        self.max_jerk = gcmd.get_float('JERK', self.max_jerk, above=0.)
-        msg = ("accel_order: %d max_jerk: %.6f"%(
-                   accel_order, self.max_jerk))
+        min_accel = gcmd.get_float('MIN_ACCEL', None, above=0.)
+        max_jerk = gcmd.get_float('JERK', None, above=0.)
+        if min_accel is not None or max_jerk is not None:
+            self._set_params(min_accel, max_jerk)
+        msg = ("accel_order: %d max_jerk: %.6f min_accel: %.6f"%(
+                   accel_order, self.max_jerk, self.min_accel))
         self.printer.set_rollover_info("scurve", "scurve: %s" % (msg,))
         gcmd.respond_info(msg, log=False)
 
