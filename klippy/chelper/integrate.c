@@ -17,6 +17,46 @@
 
 // Integrate t^0 * w, with 4th order w
 static inline double
+i2wt0(const struct smoother *sm, double t)
+{
+    double t2 = t*t;
+    double v = (1./3.) * sm->c2;
+    v = sm->c0 + v * t2;
+    return v * t;
+}
+
+// Integrate t^1 * w, with 4th order w
+static inline double
+i2wt1(const struct smoother *sm, double t)
+{
+    double t2 = t*t;
+    double v = (1./4.) * sm->c2;
+    v = (1./2.) * sm->c0 + v * t2;
+    return v * t2;
+}
+
+// Integrate t^2 * w, with 4th order w
+static inline double
+i2wt2(const struct smoother *sm, double t)
+{
+    double t2 = t*t;
+    double v = (1./5.) * sm->c2;
+    v = (1./3.) * sm->c0 + v * t2;
+    return v * t2 * t;
+}
+
+static double
+integrate_2th_order(const struct smoother *sm, double start, double end
+                    , double a0, double a1, double a2)
+{
+    double res = a2 * (i2wt2(sm, end) - i2wt2(sm, start));
+    res += a1 * (i2wt1(sm, end) - i2wt1(sm, start));
+    res += a0 * (i2wt0(sm, end) - i2wt0(sm, start));
+    return res;
+}
+
+// Integrate t^0 * w, with 4th order w
+static inline double
 i4wt0(const struct smoother *sm, double t)
 {
     double t2 = t*t;
@@ -121,6 +161,35 @@ integrate_weighted(const struct smoother *sm, double pos
 /****************************************************************
  * Smoother-specific initialization
  ****************************************************************/
+
+static void
+init_2ord_shortest(struct smoother *sm, double target_freq, double damping_ratio)
+{
+    // Shortest smoother reducing vibrations to 0 at target frequency which
+    // does not excite higher-frequency vibrations
+    sm->integrate_cb = &integrate_2th_order;
+    double hst = .29630246 / target_freq;
+    sm->hst = hst;
+    double v = 1. / hst;
+    double inv_hst2 = v * v;
+    sm->c0 = 0.2183076974181258 * v;
+    v *= inv_hst2;
+    sm->c2 = 2.154923092254376 * v;
+}
+
+static void
+init_2ord_allp(struct smoother *sm, double target_freq, double damping_ratio)
+{
+    // Smoother reducing vibrations to 0 at target frequency
+    sm->integrate_cb = &integrate_2th_order;
+    double hst = .331293106 / target_freq;
+    sm->hst = hst;
+    double v = 1. / hst;
+    double inv_hst2 = v * v;
+    sm->c0 = 0.;
+    v *= inv_hst2;
+    sm->c2 = 1.5 * v;
+}
 
 static void
 init_sifp_05(struct smoother *sm, double target_freq, double damping_ratio)
