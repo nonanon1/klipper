@@ -13,16 +13,18 @@ import cffi
 
 COMPILE_CMD = ("gcc -Wall -g -O2 -shared -fPIC"
                " -flto -fwhole-program -fno-use-linker-plugin"
+               " -lpigpiod_if2"
                " -o %s %s")
 SOURCE_FILES = [
     'pyhelper.c', 'serialqueue.c', 'stepcompress.c', 'itersolve.c', 'trapq.c',
     'kin_cartesian.c', 'kin_corexy.c', 'kin_delta.c', 'kin_polar.c',
     'kin_rotary_delta.c', 'kin_winch.c', 'kin_extruder.c',
+    'accel_values.c', 'adxl345.c',
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
     'list.h', 'serialqueue.h', 'stepcompress.h', 'itersolve.h', 'pyhelper.h',
-    'trapq.h',
+    'trapq.h', 'accel_values.h'
 ]
 
 defs_stepcompress = """
@@ -143,11 +145,24 @@ defs_std = """
     void free(void*);
 """
 
+defs_accelerometers = """
+struct accel_values {
+    int n;
+    double *t, *ax, *ay, *az;
+};
+struct accel_values *accel_values_alloc(int n);
+void accel_values_free(struct accel_values *acc);
+struct adxl345 *adxl345_init();
+void adxl345_free(struct adxl345 *acc);
+struct accel_values *adxl345_measure(struct adxl345 *acc, double duration);
+"""
+
 defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std,
     defs_stepcompress, defs_itersolve, defs_trapq,
     defs_kin_cartesian, defs_kin_corexy, defs_kin_delta, defs_kin_polar,
-    defs_kin_rotary_delta, defs_kin_winch, defs_kin_extruder
+    defs_kin_rotary_delta, defs_kin_winch, defs_kin_extruder,
+    defs_accelerometers,
 ]
 
 # Return the list of file modification times
