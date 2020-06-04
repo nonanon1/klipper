@@ -6,6 +6,20 @@ All dates in this document are approximate.
 
 # Changes
 
+20200603: The default 16x4 LCD layout will no longer show the
+estimated time remaining in a print.  (Only the elapsed time will be
+shown.)  If the old behavior is desired one can customize the menu
+display with that information (see the description of display_data in
+config/example-extras.cfg for details).
+
+20200531: The default USB vendor/product id is now 0x1d50/0x614e.
+These new ids are reserved for Klipper (thanks to the openmoko
+project). This change should not require any config changes, but the
+new ids may appear in system logs.
+
+20200524: The default value for the tmc5160 pwm_freq field is now zero
+(instead of one).
+
 20200425: The gcode_macro command template variable `printer.heater`
 was renamed to `printer.heaters`.
 
