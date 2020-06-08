@@ -110,10 +110,10 @@ class SCurve:
         self.printer.register_event_handler("klippy:connect", self.connect)
         self.toolhead = None
         self.min_jerk_limit_time = config.getfloat(
-                'min_jerk_limit_time', 0., minval=0.)
+                'min_jerk_limit_time', 0.02, minval=0.)
         self.max_jerk = config.getfloat('max_jerk', None, above=0.)
         self.accel_order = config.getchoice(
-                'acceleration_order', { "2": 2, "4": 4, "6": 6 }, "2")
+                'acceleration_order', { "2": 2, "4": 4, "6": 6 }, "4")
         # Register gcode commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command("SET_SCURVE",
