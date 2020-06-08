@@ -106,7 +106,7 @@ be done on the mainline Klipper branch before switching to the S-Curve branch.
 3. Disable Pressure Advance: `SET_PRESSURE_ADVANCE ADVANCE=0`.
 4. If you have already switched to the S-Curve branch and updated the config,
    execute `SET_SCURVE ACCEL_ORDER=2` and
-   `SET_SMOOTH_AXIS SMOOTH_X=0 SMOOTH_Y=0` commands. If you get
+   `SET_SMOOTH_AXIS SMOOTHER_FREQ_X=0 SMOOTHER_FREQ_Y=0` commands. If you get
    "Unknown command" errors for any of these commands, you can safely ignore
    them at this point and continue with the measurements.
 5. Execute the command
@@ -141,12 +141,14 @@ It should be fixed first before enabling and tuning S-Curve mode.
 
 For Cartesian printers, you will obtain 2 frequencies (f<sub>X</sub> and
 f<sub>Y</sub>), which may be different, especially on bed-slinger printers.
-CoreXY printers could have 4 frequencies. It is possible, but not mandatory, to
-repeat the process (2)-(10) rotating the model 45 degrees around Z axis such
-that the angle between the X and Y axes and the sides of the model is
-45 degrees; then measure 2 extra frequencies. Delta printers should have
-3 frequencies close to each other; just measure 2 frequencies as for Cartesian
-printers.
+Since CoreXY printers could have 4 frequencies, it is possible, but not
+mandatory, to repeat the process (2)-(10) rotating the model 45 degrees around
+Z axis such that the angle between the X and Y axes and the sides of the model
+is 45 degrees; then measure 2 extra frequencies. Delta printers could have
+resonances at different frequencies at different toolhead positions and in
+different directions, however they often have a single strong resonance; just
+measure 2 frequencies as for Cartesian printers (they should be equal or close
+to each other).
 
 Ringing frequency can depend on the position of the model within the buildplate
 and Z height; you can check if you see the differences in frequencies at
@@ -176,16 +178,11 @@ After the ringing frequencies for X and Y axes are measured, you can add the
 following section to your `printer.cfg`:
 ```
 [smooth_axis]
-smooth_x: ... # 2 / (3 * f_X)
-smooth_y: ... # 2 / (3 * f_Y)
-accel_comp_x: ... # 1 / (2 * π * f_X)^2
-accel_comp_y: ... # 1 / (2 * π * f_Y)^2
+smoother_freq_x: ...
+smoother_freq_y: ...
 ```
 
-For the example above, we get:
-
-  * smooth_x/y = 2 / (3 * 49.4) ~= 0.0135 and
-  * accel_comp_x/y = 1 / (2 * π * 49.4)^2 ~= 1 / 310.4^2 ~= 0.00001.
+For the example above, we get smoother_freq_x/y = 49.4.
 
 You can print the ringing test model now following the steps (1)-(6) from above.
 If you see that the ringing is gone, you can stop the tuning process at this
@@ -236,13 +233,11 @@ tuning conditions:
    `printer.cfg` to 7000.
 3. Restart the firmware: `RESTART`.
 4. Disable Pressure Advance: `SET_PRESSURE_ADVANCE ADVANCE=0`.
-5. Disable acceleration compensation:
-   `SET_SMOOTH_AXIS ACCEL_COMP_X=0 ACCEL_COMP_Y=0`.
-6. Set very high max jerk parameter, e.g. `SET_SCURVE JERK=2000000`.
-7. Execute the command
+5. Set very high max jerk parameter, e.g. `SET_SCURVE JERK=2000000`.
+6. Execute the command
    `TUNING_TOWER COMMAND=SET_VELOCITY_LIMIT PARAMETER=ACCEL START=1250 FACTOR=100 BAND=5`.
-8. Print the test model sliced with the suggested parameters.
-9. You can stop the print earlier if the ringing is clearly visible and you see
+7. Print the test model sliced with the suggested parameters.
+8. You can stop the print earlier if the ringing is clearly visible and you see
    that acceleration gets too high for your printer.
 
 Take a note which band shows ringing the best and count its number from the
@@ -252,17 +247,7 @@ from the bottom shows ringing pretty well, it corresponds to the acceleration
 1000 + 500 * 5 = 3500 mm/sec^2. We will use this acceleration value
 in the next steps.
 
-## Acceleration compensation tuning
-
-The feature is controlled by `accel_comp_x` and `accel_comp_y` parameters in
-`[smooth_axis]` section. Acceleration compensation further reduces the ringing
-without impacting the speed of the prints. The theory suggests that the best
-value of acceleration compensation for an axis is equal to `1 / (2 π f)^2` with
-f being the resonance (ringing) frequency for that axis. For example, for 50 Hz
-ringing frequency accel_comp_x/y ~= 0.00001 (sec^2). However, it is possible
-that the actual ideal values for these parameters slightly deviate from the
-suggested ones. So it might be a good idea to tune them to further reduce the
-ringing.
+## Fine-tuning resonance frequencies
 
 Assuming that you have sliced the ringing model with suggested parameters and
 increased `max_accel` and `max_accel_to_decel` parameters in the `printer.cfg`
@@ -275,50 +260,47 @@ to 7000 already, complete the following steps for each of the axes X and Y:
 3. Set the same max jerk parameter you used to measure the acceleration, e.g.:
    `SET_SCURVE JERK=2000000`.
 4. Calculate the necessary parameters for the `TUNING_TOWER` command to tune
-   `accel_comp_x` parameter as follows: start = accel_comp_x * 17 / 66 and
-   factor = accel_comp_x / 33, where `accel_comp_x` here is the current value
-   in `printer.cfg` (e.g. obtained during the basic tuning, which is equal to
-   1 / (2 * π * f_X)^2).
+   `smoother_freq_x` parameter as follows: start = smoother_freq_x * 83 / 132 and
+   factor = smoother_freq_x / 66, where `smoother_freq_x` here is the current value
+   in `printer.cfg`.
 5. Execute the command
-   `TUNING_TOWER COMMAND=SET_SMOOTH_AXIS PARAMETER=ACCEL_COMP_X START=start FACTOR=factor BAND=5`
+   `TUNING_TOWER COMMAND=SET_SMOOTH_AXIS PARAMETER=SMOOTHER_FREQ_X START=start FACTOR=factor BAND=5`
    using `start` and `factor` values calculated at step (4).
 6. Print the test model.
-7. Reset the original acceleration compensation value:
-   `SET_SMOOTH_AXIS ACCEL_COMP_X=...`.
+7. Reset the original frequency value:
+   `SET_SMOOTH_AXIS SMOOTHER_FREQ_X=...`.
 7. Find the band which shows ringing the least and count its number from the
    bottom starting at 1.
-8. Calculate the new accel_comp_x value via old
-   accel_comp_x * (6 + 5 * #band-number) / 33.
+8. Calculate the new smoother_freq_x value via old
+   smoother_freq_x * (39 + 5 * #band-number) / 66.
 
 Repeat these steps for the Y axis in the same manner, replacing references to X
-axis with the axis Y (e.g. replace `accel_comp_x` with `accel_comp_y` in the
-formulae and in the `TUNING_TOWER` command).
+axis with the axis Y (e.g. replace `smoother_freq_x` with `smoother_freq_y` in
+the formulae and in the `TUNING_TOWER` command).
 
 As an example, let's assume you have had measured the ringing frequency for one
-of the axis equal to 45 Hz. Then the original accel_comp_? parameter should have
-been ~= 0.0000125 (sec^2). This gives start = 0.0000125 * 17 / 66 = 0.00000322
-and factor = 0.0000125 / 33 = 0.000000379 values for `TUNING_TOWER` command.
+of the axis equal to 45 Hz. This gives start = 45 * 83 / 132 = 28.30
+and factor = 45 / 66 = 0.6818 values for `TUNING_TOWER` command.
 Now let's assume that after printing the test model, the fourth band from the
-bottom gives the least ringing. This gives the updated accel_comp_? value equal
-to 0.0000125 * (6 + 5 * 4) / 33 ~= 0.00000985.
+bottom gives the least ringing. This gives the updated smoother_freq_? value
+equal to 45 * (39 + 5 * 4) / 66 ~= 40.23.
 
 Note that `start` and `factor` values suggested at step (4) are good all-round
-values. If you see no improvements over the test print, it can mean that
-there are other issues in the printer that make acceleration compensation
-unhelpful (you can either revert the corresponding value of `accel_comp_?`
-to the default value from basic tuning or just set it to 0 in this case), or you
-may need to test a wider range of values (in the latter case refer to the
-documentation on `TUNING_TOWER` command and try different `start` and `factor`
-that cover larger or smaller values).
+values. If you see no improvements over the test print, it can mean either:
+  * there are multiple resonances per axis at significantly different
+    frequencies (revert smoother_freq_? to the default value from basic tuning)
+  * you need to test a wider range of values (refer to the documentation on
+   `TUNING_TOWER` command and try different `start` and `factor` that cover
+    larger or smaller values).
 
-After both new `accel_comp_x` and `accel_comp_y` parameters have been
+After both new `smoother_freq_x` and `smoother_freq_y` parameters have been
 calculated, you can update `[smooth_axis]` section in `printer.cfg` with the
-new `accel_comp_x` and `accel_comp_y` values.
+new `smoother_freq_x` and `smoother_freq_y` values.
 
 Also, if you see some improvements around the first or the last band for an
 axis, you can repeat the tuning process in this section iteratively, using
-accel_comp_x/accel_comp_y obtained on the previous iteration as initial values
-for the next iteration (instead of the default values from basic tuning).
+smoother_freq_x/smoother_freq_y obtained on the previous iteration as initial
+values for the next iteration (instead of the default values from basic tuning).
 
 ## Pressure Advance
 
@@ -488,27 +470,11 @@ the velocity is continuous, and for acceleration_order = 6 it is even
 smooth.  Thus, acceleration_order > 2 can improve the performance of
 the extruder if pressure advance is enabled.
 
-## Acceleration compensation
-
-As the toolhead accelerates or decelerates, it can deviate from the commanded
-trajectory due to flex in belts and small frame deformations. When accelerating,
-it usually 'lags' from the commanded position, and when decelerating -
-overshoots it a bit (illustration with ringing at 40 Hz):
-
-![Toolhead cornering](img/toolhead-cornering.png)
-
-This effect can impact the quality of the corners even at very small corner
-velocities and increase the ringing. S-Curve acceleration has an experimental
-mode called acceleration compensation which can help to mitigate this issue to
-some degree.
-
-
 S-Curve acceleration notes
 ==========
  * S-Curve reduces acceleration of short moves, effectively slowing them down
     * this can be disabled by setting very high `max_jerk` value in the config,
-      e.g. 1000000, but this is not advised, unless acceleration compensation
-      is enabled
+      e.g. 1000000, but this is not advised, unless `[smooth_axis]` is enabled
     * jerk limit is not applied to extrude-only moves, they are always executed
       with the full `max_extrude_only_accel` acceleration.
  * When the move must both accelerate and decelerate, and acceleration for the
