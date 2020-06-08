@@ -196,9 +196,7 @@ accelerations up to ~4500 mm/sec^2, but if you see the ringing only at
 ```
 [scurve]
 acceleration_order: 4
-min_jerk_limit_time: ...  # 1.0 / max(f_X, f_Y)
 ```
-For 49.4 Hz frequency we get min_jerk_limit_time ~= 0.02.
 
 Now you can restore the original `max_accel` and `max_accel_to_decel` values in
 your `printer.cfg` (simply remove `max_accel_to_decel` if you did not use it
@@ -321,12 +319,11 @@ section below.
 
 There is additional configuration parameter - `max_jerk` - that you can try to
 tune to increase the speed of the your prints. The default value for it is
-equal to 0.6 * max_accel * min_jerk_limit_time (when no value is set in the
-config file).
+equal to 30 * max_accel (when no value is set in the config file).
 
 Keep in mind that there is no well-defined upper limit on the maximum jerk
 value. Still, the practical range of values to choose max_jerk from is from
-around 50'000 to 6 * max_accel / min_jerk_limit_time (mm/sec^3), and potentially
+around 50'000 to 300 * max_accel (mm/sec^3), and potentially
 lower when using Pressure Advance, depending on the printer setup and hardware.
 
 Assuming that you have sliced the ringing model with suggested parameters
@@ -338,8 +335,7 @@ already, complete the following steps to tune max_jerk parameter:
    that shows ringing the best: `SET_VELOCITY_LIMIT ACCEL=...`.
 3. Calculate the necessary parameters for the `TUNING_TOWER` command to tune
    `max_jerk` parameter as follows:
-   start = 0.15 * original_max_accel / min_jerk_limit_time and
-   factor = 0.06 * original_max_accel / min_jerk_limit_time,
+   start = 7.5 * original_max_accel and factor = 3 * original_max_accel,
    where original_max_accel is the max_accel parameter value you normally use.
 4. Execute the command
    `TUNING_TOWER COMMAND=SET_SCURVE PARAMETER=JERK START=start FACTOR=factor BAND=5`
@@ -349,21 +345,19 @@ already, complete the following steps to tune max_jerk parameter:
    number from the bottom starting at 1. You may need to stop earlier than that
    if you notice that extruder cannot keep up with Pressure Advance anymore -
    use the band number where extruder still works normally instead.
-7. Calculate the new max_jerk value as
-   0.3 * original_max_accel / min_jerk_limit_time * #band-number.
+7. Calculate the new max_jerk value as 15 * original_max_accel * #band-number.
 
-For example, if you normally use max_accel = 5000 mm/sec^2, and have previously
-set min_jerk_limit_time = 0.0182 (corresponds to 55 Hz ringing), the parameters
-for TUNING_TOWER command are start = 0.15 * 5000 / 0.0182 ~= 41200 and factor =
-0.06 * 5000 / 0.0182 ~= 16500. If the last band with satisfactory results is
-7-th, we get max_jerk = 0.3 * 5000 / 0.0182 * 7 ~= 577000 (mm/sec^3).
+For example, if you normally use max_accel = 5000 mm/sec^2, the parameters for
+TUNING_TOWER command are start = 7.5 * 5000 ~= 37500 and factor =
+3 * 5000 ~= 15000. If the last band with satisfactory results is
+7-th, we get max_jerk = 15 * 5000 * 7 ~= 525000 (mm/sec^3).
 
 Now restore the original values of `max_accel` and `max_accel_to_decel`
 parameters and put the calculated value into `[scurve]` section in
 `printer.cfg`:
 ```
 [scurve]
-max_jerk: ... # 0.3 * max_accel / min_jerk_limit_time * #band-number
+max_jerk: ... # 15 * max_accel * #band-number
 ```
 After restarting Klipper, the tuning process is complete.
 

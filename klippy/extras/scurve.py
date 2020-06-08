@@ -114,7 +114,7 @@ class SCurve:
         self.min_accel = config.getfloat('min_accel', None, above=0.)
         self.max_jerk = config.getfloat('max_jerk', None, above=0.)
         self.accel_order = config.getchoice(
-                'acceleration_order', { "2": 2, "4": 4, "6": 6 }, "2")
+                'acceleration_order', { "2": 2, "4": 4, "6": 6 }, "4")
         # Register gcode commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command("SET_SCURVE",
