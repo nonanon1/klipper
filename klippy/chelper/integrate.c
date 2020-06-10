@@ -15,34 +15,34 @@
  * Generic smoother integration
  ****************************************************************/
 
-// Integrate t^0 * w, with 4th order w
+// Integrate t^0 * w, with 2th order w
 static inline double
 i2wt0(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./3.) * sm->c2;
-    v = sm->c0 + v * t2;
+    v = (1./2.) * sm->c1 + v * t;
+    v = sm->c0 + v * t;
     return v * t;
 }
 
-// Integrate t^1 * w, with 4th order w
+// Integrate t^1 * w, with 2th order w
 static inline double
 i2wt1(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./4.) * sm->c2;
-    v = (1./2.) * sm->c0 + v * t2;
-    return v * t2;
+    v = (1./3.) * sm->c1 + v * t;
+    v = (1./2.) * sm->c0 + v * t;
+    return v * t * t;
 }
 
-// Integrate t^2 * w, with 4th order w
+// Integrate t^2 * w, with 2th order w
 static inline double
 i2wt2(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./5.) * sm->c2;
-    v = (1./3.) * sm->c0 + v * t2;
-    return v * t2 * t;
+    v = (1./4.) * sm->c1 + v * t;
+    v = (1./3.) * sm->c0 + v * t;
+    return v * t * t * t;
 }
 
 static double
@@ -59,10 +59,11 @@ integrate_2th_order(const struct smoother *sm, double start, double end
 static inline double
 i4wt0(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./5.) * sm->c4;
-    v = (1./3.) * sm->c2 + v * t2;
-    v = sm->c0 + v * t2;
+    v = (1./4.) * sm->c3 + v * t;
+    v = (1./3.) * sm->c2 + v * t;
+    v = (1./2.) * sm->c1 + v * t;
+    v = sm->c0 + v * t;
     return v * t;
 }
 
@@ -72,8 +73,10 @@ i4wt1(const struct smoother *sm, double t)
 {
     double t2 = t*t;
     double v = (1./6.) * sm->c4;
-    v = (1./4.) * sm->c2 + v * t2;
-    v = (1./2.) * sm->c0 + v * t2;
+    v = (1./5.) * sm->c3 + v * t;
+    v = (1./4.) * sm->c2 + v * t;
+    v = (1./3.) * sm->c1 + v * t;
+    v = (1./2.) * sm->c0 + v * t;
     return v * t2;
 }
 
@@ -83,8 +86,10 @@ i4wt2(const struct smoother *sm, double t)
 {
     double t2 = t*t;
     double v = (1./7.) * sm->c4;
-    v = (1./5.) * sm->c2 + v * t2;
-    v = (1./3.) * sm->c0 + v * t2;
+    v = (1./6.) * sm->c3 + v * t;
+    v = (1./5.) * sm->c2 + v * t;
+    v = (1./4.) * sm->c1 + v * t;
+    v = (1./3.) * sm->c0 + v * t;
     return v * t2 * t;
 }
 
@@ -102,11 +107,13 @@ integrate_4th_order(const struct smoother *sm, double start, double end
 static inline double
 i6wt0(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./7.) * sm->c6;
-    v = (1./5.) * sm->c4 + v * t2;
-    v = (1./3.) * sm->c2 + v * t2;
-    v = sm->c0 + v * t2;
+    v = (1./6.) * sm->c5 + v * t;
+    v = (1./5.) * sm->c4 + v * t;
+    v = (1./4.) * sm->c3 + v * t;
+    v = (1./3.) * sm->c2 + v * t;
+    v = (1./2.) * sm->c1 + v * t;
+    v = sm->c0 + v * t;
     return v * t;
 }
 
@@ -114,24 +121,28 @@ i6wt0(const struct smoother *sm, double t)
 static inline double
 i6wt1(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./8.) * sm->c6;
-    v = (1./6.) * sm->c4 + v * t2;
-    v = (1./4.) * sm->c2 + v * t2;
-    v = (1./2.) * sm->c0 + v * t2;
-    return v * t2;
+    v = (1./7.) * sm->c5 + v * t;
+    v = (1./6.) * sm->c4 + v * t;
+    v = (1./5.) * sm->c3 + v * t;
+    v = (1./4.) * sm->c2 + v * t;
+    v = (1./3.) * sm->c1 + v * t;
+    v = (1./2.) * sm->c0 + v * t;
+    return v * t * t;
 }
 
 // Integrate t^2 * w, with 6th order w
 static inline double
 i6wt2(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./9.) * sm->c6;
-    v = (1./7.) * sm->c4 + v * t2;
-    v = (1./5.) * sm->c2 + v * t2;
-    v = (1./3.) * sm->c0 + v * t2;
-    return v * t2 * t;
+    v = (1./8.) * sm->c5 + v * t;
+    v = (1./7.) * sm->c4 + v * t;
+    v = (1./6.) * sm->c3 + v * t;
+    v = (1./5.) * sm->c2 + v * t;
+    v = (1./4.) * sm->c1 + v * t;
+    v = (1./3.) * sm->c0 + v * t;
+    return v * t * t * t;
 }
 
 static double
@@ -163,38 +174,47 @@ integrate_weighted(const struct smoother *sm, double pos
  ****************************************************************/
 
 static void
-init_2ord_shortest(struct smoother *sm, double target_freq, double damping_ratio)
-{
-    // Shortest smoother reducing vibrations to 0 at target frequency which
-    // does not excite higher-frequency vibrations
-    sm->integrate_cb = &integrate_2th_order;
-    double hst = .29630246 / target_freq;
-    sm->hst = hst;
-    double v = 1. / hst;
-    double inv_hst2 = v * v;
-    sm->c0 = 0.2183076974181258 * v;
-    v *= inv_hst2;
-    sm->c2 = 2.154923092254376 * v;
-}
-
-static void
 init_2ord_allp(struct smoother *sm, double target_freq, double damping_ratio)
 {
     // Smoother reducing vibrations to 0 at target frequency
     sm->integrate_cb = &integrate_2th_order;
-    double hst = .331293106 / target_freq;
+    double dr2 = damping_ratio * damping_ratio;
+    double hst = .5 * (0.662586 - 0.0945695 * dr2) / target_freq;
     sm->hst = hst;
-    double v = 1. / hst;
-    double inv_hst2 = v * v;
+    double inv_hst = 1. / hst;
     sm->c0 = 0.;
-    v *= inv_hst2;
+    double v = inv_hst * inv_hst;
+    sm->c1 = (1.681147871689192 - 1.318310718147036 * dr2) * damping_ratio * v;
+    v *= inv_hst;
     sm->c2 = 1.5 * v;
 }
 
 static void
-init_sifp_05(struct smoother *sm, double target_freq, double damping_ratio)
+init_def_sm(struct smoother *sm, double target_freq, double damping_ratio)
 {
-    // SI-type with 5% vibration tolerance with full period duration
+    // Default smoother with acceleration compesnation and damping ratio
+    // built-in.
+    sm->integrate_cb = &integrate_4th_order;
+    double hst = 1. / (3. * target_freq);
+    sm->hst = hst;
+    double inv_hst = 1. / hst;
+    double v = inv_hst;
+    sm->c0 = 0.08260251301777499 * v;
+    v *= inv_hst;
+    sm->c1 = 3.580986219567645 * damping_ratio * v;
+    v *= inv_hst;
+    sm->c2 = 0.689692460946675 * v;
+    v *= inv_hst;
+    sm->c3 = -3.580986219567645 * damping_ratio * v;
+    v *= inv_hst;
+    sm->c4 = 0.9375 * v;
+}
+
+static void
+init_eisf_05(struct smoother *sm, double target_freq, double damping_ratio)
+{
+    // SI-type with 5% vibration tolerance near the target frequency with
+    // full period duration.
     sm->integrate_cb = &integrate_4th_order;
     double hst = .5 / target_freq;
     sm->hst = hst;
@@ -208,26 +228,32 @@ init_sifp_05(struct smoother *sm, double target_freq, double damping_ratio)
 }
 
 static void
-init_siaf_05(struct smoother *sm, double target_freq, double damping_ratio)
+init_eiaf_05(struct smoother *sm, double target_freq, double damping_ratio)
 {
     // A 4th-order positive smoother suppressing all vibrations above
     // the target frequency by at least 95% (5% vibrations tolerance)
     sm->integrate_cb = &integrate_4th_order;
+    double dr = damping_ratio;
     double hst = 0.682156695 / target_freq;
-    sm->hst = hst;
-    double v = 1. / hst;
-    double inv_hst2 = v * v;
+    double inv_hst = 1. / hst;
+    double v = inv_hst;
     sm->c0 = 0.7264076297522936 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c1 = v * (((-2.01743055 * dr - 0.276217771) * dr + 2.17115213) * dr
+                  - 3.10978713e-04);
+    v *= inv_hst;
     sm->c2 = -1.00906293169719 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c3 = v * (((2.50996385 * dr + 0.411927475) * dr - 2.30834859) * dr
+                  + 4.61515089e-04);
+    v *= inv_hst;
     sm->c4 = 0.5497334040671973 * v;
 }
 
 static void
 init_dfsf_05(struct smoother *sm, double target_freq, double damping_ratio)
 {
-    // Acceleration displacement-free smoother suppressing all vibrations above
+    // Acceleration displacement-free smoother suppressing all vibrations
     // near the target frequency by at least 95% (5% vibrations tolerance)
     sm->integrate_cb = &integrate_6th_order;
     double hst = 0.879442505 / target_freq;
@@ -249,16 +275,26 @@ init_dfaf_05(struct smoother *sm, double target_freq, double damping_ratio)
     // Acceleration displacement-free smoother suppressing all vibrations above
     // the target frequency by at least 95% (5% vibrations tolerance)
     sm->integrate_cb = &integrate_6th_order;
+    double dr = damping_ratio;
     double hst = 1.089438525 / target_freq;
+    double inv_hst = 1. / hst;
+    double v = inv_hst;
     sm->hst = hst;
-    double v = 1. / hst;
-    double inv_hst2 = v * v;
     sm->c0 = 1.42427487336909 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c1 = v * (((((-14.2104137 * dr + 43.7689342) * dr - 30.7462542) * dr
+                    + 0.477486016) * dr + 5.96979668) * dr + 9.15082336e-05);
+    v *= inv_hst;
     sm->c2 = -5.783771970272312 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c3 = v * (((((94.2158021 * dr - 222.052012) * dr + 137.839431) * dr
+                    - 2.38661642) * dr - 21.1434310) * dr - 4.53302822e-04);
+    v *= inv_hst;
     sm->c4 = 7.766315293352271 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c5 = v * (((((-98.7444909 * dr + 208.745303) * dr - 121.233944) * dr
+                    + 2.22712895) * dr + 15.6712778) * dr + 4.21104739e-04);
+    v *= inv_hst;
     sm->c6 = -3.847297593641651 * v;
 }
 
@@ -268,16 +304,26 @@ init_dfaf_02(struct smoother *sm, double target_freq, double damping_ratio)
     // Acceleration displacement-free smoother suppressing all vibrations above
     // the target frequency by at least 98% (2% vibrations tolerance)
     sm->integrate_cb = &integrate_6th_order;
+    double dr = damping_ratio;
     double hst = 1.282011392 / target_freq;
+    double inv_hst = 1. / hst;
+    double v = inv_hst;
     sm->hst = hst;
-    double v = 1. / hst;
-    double inv_hst2 = v * v;
     sm->c0 = 1.57525352661564 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c1 = v * (((((15.2749667 * dr - 1.63847006) * dr - 8.62915628) * dr
+                    + 0.0730289857) * dr + 3.63332742) * dr + 2.29001409e-05);
+    v *= inv_hst;
     sm->c2 = -7.728603566914598 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c3 = v * (((((336.704092 * dr - 361.000492) * dr + 138.900482) * dr
+                    - 1.28692490) * dr - 16.1534652) * dr - 6.51081609e-06);
+    v *= inv_hst;
     sm->c4 = 11.55794321405673 * v;
-    v *= inv_hst2;
+    v *= inv_hst;
+    sm->c5 = v * (((((-507.027318 * dr + 509.223786) * dr - 174.325977) * dr
+                    + 1.63129389) * dr + 14.1370873) * dr - 4.43185197e-05);
+    v *= inv_hst;
     sm->c6 = -5.674486863182988 * v;
 }
 
@@ -304,8 +350,10 @@ typedef void (*init_smoother_callback)(struct smoother *sm, double target_freq
                                        , double damping_ratio);
 
 static init_smoother_callback init_smoother_callbacks[] = {
-    [SIFP05] = &init_sifp_05,
-    [SIAF05] = &init_siaf_05,
+    [ZVSF] = &init_2ord_allp,
+    [ZVDEF] = &init_def_sm,
+    [EISF05] = &init_eisf_05,
+    [EIAF05] = &init_eiaf_05,
     [DFSF05] = &init_dfsf_05,
     [DFAF05] = &init_dfaf_05,
     [DFAF02] = &init_dfaf_02,

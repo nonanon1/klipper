@@ -2,12 +2,14 @@
 #define INTEGRATE_H
 
 enum SMOOTHER_TYPE {
-    SIFP05 = 1,
-    SIAF05 = 2,
-    DFSF05 = 3,
-    DFAF05 = 4,
-    DFAF02 = 5,
-    DFAF01 = 6,
+    ZVSF = 1,
+    ZVDEF = 2,
+    EISF05 = 3,
+    EIAF05 = 4,
+    DFSF05 = 5,
+    DFAF05 = 6,
+    DFAF02 = 7,
+    DFAF01 = 8,
 };
 
 struct smoother;
@@ -16,7 +18,7 @@ typedef double (*integrate_callback)(const struct smoother *sm
                                      , double start, double end
                                      , double a0, double a1, double a2);
 struct smoother {
-    double c6, c4, c2, c0;
+    double c6, c5, c4, c3, c2, c1, c0;
     integrate_callback integrate_cb;
     double hst;
 };
