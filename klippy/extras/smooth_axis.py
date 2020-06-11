@@ -28,11 +28,13 @@ class SmoothAxis:
                 minval=0., maxval=MAX_ACCEL_COMPENSATION)
         self.smoother_freq_x = config.getfloat(
                 'smoother_freq_x',
-                1. / (2. * math.pi * math.sqrt(accel_comp_x)),
+                (1. / (2. * math.pi * math.sqrt(accel_comp_x))
+                    if accel_comp_x > 0 else 0.),
                 minval=0.)
         self.smoother_freq_y = config.getfloat(
                 'smoother_freq_y',
-                1. / (2. * math.pi * math.sqrt(accel_comp_y)),
+                (1. / (2. * math.pi * math.sqrt(accel_comp_y))
+                    if accel_comp_y > 0 else 0.),
                 minval=0.)
         self.stepper_kinematics = []
         self.orig_stepper_kinematics = []
