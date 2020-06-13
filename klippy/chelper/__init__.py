@@ -145,10 +145,11 @@ defs_kin_shaper = """
     };
 
     double input_shaper_get_step_generation_window(int shaper_type
-        , double spring_period, double damping_ratio);
+        , double shaper_freq, double damping_ratio);
     int input_shaper_set_shaper_params(struct stepper_kinematics *sk
-        , double spring_period_x, double spring_period_y
-        , double damping_ratio_x, double damping_ratio_y, int shaper_type);
+        , int shaper_type_x, int shaper_type_y
+        , double shaper_freq_x, double shaper_freq_y
+        , double damping_ratio_x, double damping_ratio_y);
     int input_shaper_set_sk(struct stepper_kinematics *sk
         , struct stepper_kinematics *orig_sk);
     struct stepper_kinematics * input_shaper_alloc(void);
