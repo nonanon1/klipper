@@ -217,10 +217,11 @@ init_shaper_ei(double target_period, double damping_ratio
     *n = 3;
     *pulses = malloc(*n * sizeof(struct shaper_pulse));
 
-    double k = exp(-M_PI * damping_ratio);
-    double a2 = 2. * (1. - EI_SHAPER_VIB_TOL) / (1. + EI_SHAPER_VIB_TOL) * k;
-    double a3 = k * k;
-    double inv_D = 1. / (1. + a2 + a3);
+    double K = calc_ZV_K(damping_ratio);
+    double a1 = .25 * (1. + EI_SHAPER_VIB_TOL);
+    double a2 = .5 * (1. - EI_SHAPER_VIB_TOL) * K;
+    double a3 = a1 * K * K;
+    double inv_D = 1. / (a1 + a2 + a3);
     double half_period = .5 * target_period /
         sqrt(1. - damping_ratio*damping_ratio);
 
@@ -230,7 +231,7 @@ init_shaper_ei(double target_period, double damping_ratio
 
     (*pulses)[0].a = a3 * inv_D;
     (*pulses)[1].a = a2 * inv_D;
-    (*pulses)[2].a = inv_D;
+    (*pulses)[2].a = a1 * inv_D;
 }
 
 static void
