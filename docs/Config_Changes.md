@@ -6,6 +6,9 @@ All dates in this document are approximate.
 
 # Changes
 
+20200613: `smooth_axis` configuration options have changed. It is now
+configured via `smoother_freq_x` and `smoother_freq_y` params directly.
+
 20200608: The LCD display support has changed the name of some
 internal "glyphs".  If a custom display layout was implemented it may
 be necessary to update to the latest glyph names (see

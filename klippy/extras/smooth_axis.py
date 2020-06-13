@@ -18,24 +18,8 @@ class SmoothAxis:
                 'damping_ratio_x', 0., minval=0., maxval=1.)
         self.damping_ratio_y = config.getfloat(
                 'damping_ratio_y', 0., minval=0., maxval=1.)
-        smooth_x = config.getfloat('smooth_x', 0., minval=0., maxval=.200)
-        smooth_y = config.getfloat('smooth_y', 0., minval=0., maxval=.200)
-        accel_comp_x = config.getfloat(
-                'accel_comp_x', (3. * smooth_x / (4. * math.pi))**2,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
-        accel_comp_y = config.getfloat(
-                'accel_comp_y', (3. * smooth_y / (4. * math.pi))**2,
-                minval=0., maxval=MAX_ACCEL_COMPENSATION)
-        self.smoother_freq_x = config.getfloat(
-                'smoother_freq_x',
-                (1. / (2. * math.pi * math.sqrt(accel_comp_x))
-                    if accel_comp_x > 0 else 0.),
-                minval=0.)
-        self.smoother_freq_y = config.getfloat(
-                'smoother_freq_y',
-                (1. / (2. * math.pi * math.sqrt(accel_comp_y))
-                    if accel_comp_y > 0 else 0.),
-                minval=0.)
+        self.smoother_freq_x = config.getfloat('smoother_freq_x', 0., minval=0.)
+        self.smoother_freq_y = config.getfloat('smoother_freq_y', 0., minval=0.)
         self.stepper_kinematics = []
         self.orig_stepper_kinematics = []
         # Stepper kinematics code
