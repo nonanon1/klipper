@@ -65,9 +65,10 @@ enum INPUT_SHAPER_TYPE {
     INPUT_SHAPER_ZVD = 1,
     INPUT_SHAPER_ZVDD = 2,
     INPUT_SHAPER_ZVDDD = 3,
-    INPUT_SHAPER_EI = 4,
-    INPUT_SHAPER_2HUMP_EI = 5,
-    INPUT_SHAPER_3HUMP_EI = 6,
+    INPUT_SHAPER_MZV = 4,
+    INPUT_SHAPER_EI = 5,
+    INPUT_SHAPER_2HUMP_EI = 6,
+    INPUT_SHAPER_3HUMP_EI = 7,
 };
 
 struct input_shaper {
@@ -182,6 +183,31 @@ init_shaper_zvddd(double target_period, double damping_ratio
     (*pulses)[2].a = 6. * K2 * inv_D;
     (*pulses)[3].a = 4. * K * inv_D;
     (*pulses)[4].a = inv_D;
+}
+
+static void
+init_shaper_mzv(double target_period, double damping_ratio
+                , struct shaper_pulse **pulses, int *n)
+{
+    *n = 3;
+    *pulses = malloc(*n * sizeof(struct shaper_pulse));
+
+    double shaper_duration = .75 * target_period /
+        sqrt(1. - damping_ratio*damping_ratio);
+    double K = calc_ZV_K(damping_ratio);
+
+    double a1 = 1. - 1. / sqrt(2.);
+    double a2 = (sqrt(2.) - 1.) * K;
+    double a3 = a1 * K * K;
+    double inv_D = 1. / (a1 + a2 + a3);
+
+    (*pulses)[0].t = -shaper_duration;
+    (*pulses)[1].t = -.5 * shaper_duration;
+    (*pulses)[2].t = 0.;
+
+    (*pulses)[0].a = a3 * inv_D;
+    (*pulses)[1].a = a2 * inv_D;
+    (*pulses)[2].a = a1 * inv_D;
 }
 
 static void
@@ -390,6 +416,7 @@ static is_init_shaper_callback init_shaper_callbacks[] = {
     [INPUT_SHAPER_ZVD] = &init_shaper_zvd,
     [INPUT_SHAPER_ZVDD] = &init_shaper_zvdd,
     [INPUT_SHAPER_ZVDDD] = &init_shaper_zvddd,
+    [INPUT_SHAPER_MZV] = &init_shaper_mzv,
     [INPUT_SHAPER_EI] = &init_shaper_ei,
     [INPUT_SHAPER_2HUMP_EI] = &init_shaper_2hump_ei,
     [INPUT_SHAPER_3HUMP_EI] = &init_shaper_3hump_ei,

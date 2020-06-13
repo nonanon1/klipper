@@ -24,6 +24,7 @@ class InputShaper:
                 , 'zvd': ffi_lib.INPUT_SHAPER_ZVD
                 , 'zvdd': ffi_lib.INPUT_SHAPER_ZVDD
                 , 'zvddd': ffi_lib.INPUT_SHAPER_ZVDDD
+                , 'mzv': ffi_lib.INPUT_SHAPER_MZV
                 , 'ei': ffi_lib.INPUT_SHAPER_EI
                 , '2hump_ei': ffi_lib.INPUT_SHAPER_2HUMP_EI
                 , '3hump_ei': ffi_lib.INPUT_SHAPER_3HUMP_EI}
