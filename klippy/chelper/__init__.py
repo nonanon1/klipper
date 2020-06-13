@@ -11,7 +11,7 @@ import cffi
 # c_helper.so compiling
 ######################################################################
 
-COMPILE_CMD = ("gcc -Wall -g -O3 -shared -fPIC"
+COMPILE_CMD = ("gcc -Wall -g -O2 -shared -fPIC"
                " -flto -fwhole-program -fno-use-linker-plugin"
                " -o %s %s")
 SOURCE_FILES = [
@@ -19,11 +19,10 @@ SOURCE_FILES = [
     'accelcombine.c', 'accelgroup.c', 'moveq.c', 'scurve.c', 'trapbuild.c',
     'kin_cartesian.c', 'kin_corexy.c', 'kin_delta.c', 'kin_polar.c',
     'kin_rotary_delta.c', 'kin_winch.c', 'kin_extruder.c', 'kin_shaper.c',
-    'kin_smooth_axis.c', 'integrate.c',
 ]
 DEST_LIB = "c_helper.so"
 OTHER_FILES = [
-    'list.h', 'serialqueue.h', 'stepcompress.h', 'integrate.h', 'itersolve.h',
+    'list.h', 'serialqueue.h', 'stepcompress.h', 'itersolve.h',
     'accelcombine.h', 'accelgroup.h', 'moveq.h', 'scurve.h', 'trapbuild.h',
     'pyhelper.h', 'trapq.h'
 ]
@@ -155,18 +154,6 @@ defs_kin_shaper = """
     struct stepper_kinematics * input_shaper_alloc(void);
 """
 
-defs_kin_smooth_axis = """
-    void smooth_axis_set_time(struct stepper_kinematics *sk
-        , double smooth_x, double smooth_y);
-    void smooth_axis_set_damping_ratio(struct stepper_kinematics *sk
-        , double damping_ratio_x, double damping_ratio_y);
-    void smooth_axis_set_accel_comp(struct stepper_kinematics *sk
-        , double accel_comp_x, double accel_comp_y);
-    int smooth_axis_set_sk(struct stepper_kinematics *sk
-        , struct stepper_kinematics *orig_sk);
-    struct stepper_kinematics * smooth_axis_alloc(void);
-"""
-
 defs_serialqueue = """
     #define MESSAGE_MAX 64
     struct pull_queue_message {
@@ -210,8 +197,7 @@ defs_all = [
     defs_pyhelper, defs_serialqueue, defs_std,
     defs_stepcompress, defs_itersolve, defs_moveq, defs_trapq,
     defs_kin_cartesian, defs_kin_corexy, defs_kin_delta, defs_kin_polar,
-    defs_kin_rotary_delta, defs_kin_winch, defs_kin_extruder,
-    defs_kin_shaper, defs_kin_smooth_axis,
+    defs_kin_rotary_delta, defs_kin_winch, defs_kin_extruder, defs_kin_shaper,
 ]
 
 # Return the list of file modification times
