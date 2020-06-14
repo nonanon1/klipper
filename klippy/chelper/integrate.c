@@ -71,26 +71,24 @@ i4wt0(const struct smoother *sm, double t)
 static inline double
 i4wt1(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./6.) * sm->c4;
     v = (1./5.) * sm->c3 + v * t;
     v = (1./4.) * sm->c2 + v * t;
     v = (1./3.) * sm->c1 + v * t;
     v = (1./2.) * sm->c0 + v * t;
-    return v * t2;
+    return v * t * t;
 }
 
 // Integrate t^2 * w, with 4th order w
 static inline double
 i4wt2(const struct smoother *sm, double t)
 {
-    double t2 = t*t;
     double v = (1./7.) * sm->c4;
     v = (1./6.) * sm->c3 + v * t;
     v = (1./5.) * sm->c2 + v * t;
     v = (1./4.) * sm->c1 + v * t;
     v = (1./3.) * sm->c0 + v * t;
-    return v * t2 * t;
+    return v * t * t * t;
 }
 
 static double
@@ -235,6 +233,7 @@ init_eiaf_05(struct smoother *sm, double target_freq, double damping_ratio)
     sm->integrate_cb = &integrate_4th_order;
     double dr = damping_ratio;
     double hst = 0.682156695 / target_freq;
+    sm->hst = hst;
     double inv_hst = 1. / hst;
     double v = inv_hst;
     sm->c0 = 0.7264076297522936 * v;
@@ -277,9 +276,9 @@ init_dfaf_05(struct smoother *sm, double target_freq, double damping_ratio)
     sm->integrate_cb = &integrate_6th_order;
     double dr = damping_ratio;
     double hst = 1.089438525 / target_freq;
+    sm->hst = hst;
     double inv_hst = 1. / hst;
     double v = inv_hst;
-    sm->hst = hst;
     sm->c0 = 1.42427487336909 * v;
     v *= inv_hst;
     sm->c1 = v * (((((-14.2104137 * dr + 43.7689342) * dr - 30.7462542) * dr
@@ -306,9 +305,9 @@ init_dfaf_02(struct smoother *sm, double target_freq, double damping_ratio)
     sm->integrate_cb = &integrate_6th_order;
     double dr = damping_ratio;
     double hst = 1.282011392 / target_freq;
+    sm->hst = hst;
     double inv_hst = 1. / hst;
     double v = inv_hst;
-    sm->hst = hst;
     sm->c0 = 1.57525352661564 * v;
     v *= inv_hst;
     sm->c1 = v * (((((15.2749667 * dr - 1.63847006) * dr - 8.62915628) * dr
