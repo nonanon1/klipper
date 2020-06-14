@@ -195,7 +195,8 @@ init_shaper_mzv(double shaper_freq, double damping_ratio
     *pulses = malloc(*n * sizeof(struct shaper_pulse));
 
     double half_period = calc_half_period(shaper_freq, damping_ratio);
-    double K = calc_ZV_K(damping_ratio);
+    double K = exp(-.75 * damping_ratio * M_PI
+            / sqrt(1. - damping_ratio*damping_ratio));
 
     double a1 = 1. - 1. / sqrt(2.);
     double a2 = (sqrt(2.) - 1.) * K;
