@@ -16,9 +16,9 @@ class InputShaper:
         self.printer.register_event_handler("klippy:connect", self.connect)
         self.toolhead = None
         self.damping_ratio_x = config.getfloat(
-                'damping_ratio_x', 0.05, minval=0., maxval=MAX_DAMPING_RATIO)
+                'damping_ratio_x', 0.1, minval=0., maxval=MAX_DAMPING_RATIO)
         self.damping_ratio_y = config.getfloat(
-                'damping_ratio_y', 0.05, minval=0., maxval=MAX_DAMPING_RATIO)
+                'damping_ratio_y', 0.1, minval=0., maxval=MAX_DAMPING_RATIO)
         self.shaper_freq_x = config.getfloat('shaper_freq_x', 0., minval=0.)
         self.shaper_freq_y = config.getfloat('shaper_freq_y', 0., minval=0.)
         ffi_main, ffi_lib = chelper.get_ffi()
