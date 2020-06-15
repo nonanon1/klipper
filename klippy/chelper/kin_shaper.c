@@ -242,32 +242,21 @@ init_shaper_2hump_ei(double shaper_freq, double damping_ratio
     *n = 4;
     *pulses = malloc(*n * sizeof(struct shaper_pulse));
 
-    double d_r = damping_ratio;
-    double d_r2 = d_r * d_r;
-    double d_r3 = d_r2 * d_r;
+    double half_period = calc_half_period(shaper_freq, damping_ratio);
+    double K = calc_ZV_K(damping_ratio);
 
-    // Coefficients calculated for 5% vibration tolerance
-    double t1 = 0.;
-    double t2 = 0.49890 + 0.16270 * d_r - 0.54262 * d_r2 + 6.16180 * d_r3;
-    double t3 = 0.99748 + 0.18382 * d_r - 1.58270 * d_r2 + 8.17120 * d_r3;
-    double t4 = 1.49920 - 0.09297 * d_r - 0.28338 * d_r2 + 1.85710 * d_r3;
-
-    double a1 = 0.16054 + 0.76699 * d_r + 2.26560 * d_r2 - 1.22750 * d_r3;
-    double a2 = 0.33911 + 0.45081 * d_r - 2.58080 * d_r2 + 1.73650 * d_r3;
-    double a3 = 0.34089 - 0.61533 * d_r - 0.68765 * d_r2 + 0.42261 * d_r3;
-    double a4 = 0.15997 - 0.60246 * d_r + 1.00280 * d_r2 - 0.93145 * d_r3;
-
-    // Coefficients aN should normally sum up to 1. already, but since we use
-    // a polynomial expansion, they can get slightly off. So it is better to
-    // re-normalize them to avoid tiny potential print scaling problems.
+    double V2 = EI_SHAPER_VIB_TOL * EI_SHAPER_VIB_TOL;
+    double X = pow(V2 * (sqrt(1. - V2) + 1.), 1./3.);
+    double a1 = (3.*X*X + 2.*X + 3.*V2) / (16.*X);
+    double a2 = (.5 - a1) * K;
+    double a3 = a2 * K;
+    double a4 = a1 * K * K * K;
     double inv_D = 1. / (a1 + a2 + a3 + a4);
 
-    double target_period = 1. / shaper_freq;
-
-    (*pulses)[0].t = -target_period * t4;
-    (*pulses)[1].t = -target_period * t3;
-    (*pulses)[2].t = -target_period * t2;
-    (*pulses)[3].t = -target_period * t1;
+    (*pulses)[0].t = -3. * half_period;
+    (*pulses)[1].t = -2. * half_period;
+    (*pulses)[2].t = -half_period;
+    (*pulses)[3].t = 0.;
 
     (*pulses)[0].a = a4 * inv_D;
     (*pulses)[1].a = a3 * inv_D;
@@ -282,35 +271,23 @@ init_shaper_3hump_ei(double shaper_freq, double damping_ratio
     *n = 5;
     *pulses = malloc(*n * sizeof(struct shaper_pulse));
 
-    double d_r = damping_ratio;
-    double d_r2 = d_r * d_r;
-    double d_r3 = d_r2 * d_r;
+    double half_period = calc_half_period(shaper_freq, damping_ratio);
+    double K = calc_ZV_K(damping_ratio);
+    double K2 = K * K;
 
-    // Coefficients calculated for 5% vibration tolerance
-    double t1 = 0.;
-    double t2 = 0.49974 + 0.23834 * d_r + 0.44559 * d_r2 + 12.4720 * d_r3;
-    double t3 = 0.99849 + 0.29808 * d_r - 2.36460 * d_r2 + 23.3990 * d_r3;
-    double t4 = 1.49870 + 0.10306 * d_r - 2.01390 * d_r2 + 17.0320 * d_r3;
-    double t5 = 1.99960 - 0.28231 * d_r + 0.61536 * d_r2 + 5.40450 * d_r3;
-
-    double a1 = 0.11275 + 0.76632 * d_r + 3.29160 * d_r2 - 1.44380 * d_r3;
-    double a2 = 0.23698 + 0.61164 * d_r - 2.57850 * d_r2 + 4.85220 * d_r3;
-    double a3 = 0.30008 - 0.19062 * d_r - 2.14560 * d_r2 + 0.13744 * d_r3;
-    double a4 = 0.23775 - 0.73297 * d_r + 0.46885 * d_r2 - 2.08650 * d_r3;
-    double a5 = 0.11244 - 0.45439 * d_r + 0.96382 * d_r2 - 1.46000 * d_r3;
-
-    // Coefficients aN should normally sum up to 1. already, but since we use
-    // a polynomial expansion, they can get slightly off. So it is better to
-    // re-normalize them to avoid tiny potential print scaling problems.
+    double a1 = 0.0625 * (1. + 3. * EI_SHAPER_VIB_TOL
+            + 2. * sqrt(2. * (EI_SHAPER_VIB_TOL + 1.) * EI_SHAPER_VIB_TOL));
+    double a2 = 0.25 * (1. - EI_SHAPER_VIB_TOL) * K;
+    double a3 = (0.5 * (1. + EI_SHAPER_VIB_TOL) - 2. * a1) * K2;
+    double a4 = a2 * K2;
+    double a5 = a1 * K2 * K2;
     double inv_D = 1. / (a1 + a2 + a3 + a4 + a5);
 
-    double target_period = 1. / shaper_freq;
-
-    (*pulses)[0].t = -target_period * t5;
-    (*pulses)[1].t = -target_period * t4;
-    (*pulses)[2].t = -target_period * t3;
-    (*pulses)[3].t = -target_period * t2;
-    (*pulses)[4].t = -target_period * t1;
+    (*pulses)[0].t = -4. * half_period;
+    (*pulses)[1].t = -3. * half_period;
+    (*pulses)[2].t = -2. * half_period;
+    (*pulses)[3].t = -half_period;
+    (*pulses)[4].t = 0.;
 
     (*pulses)[0].a = a5 * inv_D;
     (*pulses)[1].a = a4 * inv_D;
