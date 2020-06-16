@@ -11,53 +11,38 @@
 #include <stdlib.h> // malloc
 #include <string.h> // memset
 
-// Calculate the inverse of the norm of the weight function
-static double
-calc_inv_norm(double hst)
-{
-    // Inverse norm of the weight function ((t-T)^2-h^2)^2
-    return 15. / (16. * hst * hst * hst * hst * hst);
-}
-
-// Calculate (t^2-h^2)^2
-static inline double
-w(const struct smoother *sm, double t)
-{
-    double t2 = t*t;
-    double v = t2 - sm->h2;
-    return v*v;
-}
-
-static const double w_antideriv_coeffs[][3] = {
-    {1./5., -2./3., 1./1.,},
-    {1./6., -2./4., 1./2.,},
-    {1./7., -2./5., 1./3.,},
-    {1./8., -2./6., 1./4.,},
-    {1./9., -2./7., 1./5.,},
-    {1./10., -2./8., 1./6.,},
-    {1./11., -2./9., 1./7.,},
+static const double w_antideriv_coeffs[] = {
+    1./1.,
+    1./2.,
+    1./3.,
+    1./4.,
+    1./5.,
+    1./6.,
+    1./7.,
+    1./8.,
+    1./9.,
+    1./10.,
 };
 
 // Integrate t^n * (t^2-h^2)^2
 static inline double
 iwtn(const struct smoother *sm, int n, double t)
 {
-    const double *coeffs = w_antideriv_coeffs[n];
-    double t2 = t*t;
-    double v = (coeffs[0] * t2 + coeffs[1] * sm->h2) * t2 + coeffs[2] * sm->h4;
+    const double *coeffs = w_antideriv_coeffs + n;
+    double v = coeffs[2] * sm->c2;
+    v = coeffs[1] * sm->c1 + v * t;
     for (; n >= 0; --n)
         v *= t;
-    return v;
+    return v * t;
 }
 
-// Integrate scurve s(t) with smoothing weight function
-// ((t-T)^2-h^2)^2 over the range [start; end] with T == -toff
+// Integrate scurve s(t) with a smoothing weight function w(t)
+// over the range [start; end] with T == -toff
 double
 integrate_weighted(const struct smoother *sm, double pos, struct scurve *s
                    , double start, double end, double toff)
 {
     double toff2 = toff * toff;
-    double v = toff2 - sm->h2;
     // Calculate s(t) * w(t) integral as either expansion of s(t) or w(t)
     // over powers of t. w(t) expansion becomes numerically unstable when
     // abs(toff) >> hst, and s(t) - when abs(toff) >> total_accel_t.
@@ -77,44 +62,35 @@ integrate_weighted(const struct smoother *sm, double pos, struct scurve *s
         res += pos * (iwtn(sm, 0, end) - iwtn(sm, 0, start));
         return res;
     } else {
-        double res = (scurve_tn_antiderivative(s, 4, end)
-                      - scurve_tn_antiderivative(s, 4, start));
-        res += 4. * toff * (scurve_tn_antiderivative(s, 3, end)
-                            - scurve_tn_antiderivative(s, 3, start));
-        res += 2. * (3. * toff2 - sm->h2) *
+        double res = sm->c2 *
             (scurve_tn_antiderivative(s, 2, end)
              - scurve_tn_antiderivative(s, 2, start));
-        res += 4. * toff * v * (scurve_tn_antiderivative(s, 1, end)
-                                - scurve_tn_antiderivative(s, 1, start));
-        res += v * v * (scurve_tn_antiderivative(s, 0, end)
-                        - scurve_tn_antiderivative(s, 0, start));
+        res += (2. * sm->c2 * toff + sm->c1) *
+            (scurve_tn_antiderivative(s, 1, end)
+             - scurve_tn_antiderivative(s, 1, start));
+        res += (sm->c2 * toff2 + sm->c1 * toff) *
+            (scurve_tn_antiderivative(s, 0, end)
+             - scurve_tn_antiderivative(s, 0, start));
         start += toff; end += toff;
         res += pos * (iwtn(sm, 0, end) - iwtn(sm, 0, start));
         return res;
     }
 }
 
-// Integrate velocity jumps near the ends of the range [start; end] with
-// smoothing weight function. To get correct results it is required to sum up
-// the returned values over the full integration range [T-hst; T+hst].
-double
-integrate_velocity_jumps(const struct smoother *sm, const struct scurve *s
-                         , double start, double end, double toff)
-{
-    double start_v = scurve_velocity(s, start);
-    double end_v = scurve_velocity(s, end);
-    // Velocity jumps integration assumes that the weight function vanishes at
-    // the integration bounds T-hst and T+hst to ignore velocity jumps there.
-    return start_v * w(sm, start + toff) - end_v * w(sm, end + toff);
-}
-
 struct smoother *
-alloc_smoother(double hst) {
+alloc_smoother(double target_freq, double damping_ratio)
+{
     struct smoother *sm = malloc(sizeof(*sm));
     memset(sm, 0, sizeof(*sm));
+
+    double dr2 = damping_ratio * damping_ratio;
+    double hst = .5 * (0.662586 - 0.0945695 * dr2) / target_freq;
     sm->hst = hst;
-    sm->inv_norm = calc_inv_norm(hst);
     sm->h2 = hst * hst;
-    sm->h4 = sm->h2 * sm->h2;
+    double inv_hst = 1. / hst;
+    double v = inv_hst * inv_hst;
+    sm->c1 = (1.681147871689192 - 1.318310718147036 * dr2) * damping_ratio * v;
+    v *= inv_hst;
+    sm->c2 = 1.5 * v;
     return sm;
 }

@@ -1,6 +1,7 @@
 // Kinematic filter to smooth out cartesian XY movements
 //
-// Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2019-2020  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2020  Dmitry Butyugin <dmbutyugin@google.com>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
@@ -17,8 +18,7 @@
 // Calculate the definitive integral on part of a move
 static double
 move_integrate(const struct move *m, int axis, double start, double end
-               , double time_offset, const struct smoother *sm
-               , double damping_comp, double accel_comp)
+               , double time_offset, const struct smoother *sm)
 {
     if (start < 0.)
         start = 0.;
@@ -28,37 +28,25 @@ move_integrate(const struct move *m, int axis, double start, double end
     double start_pos = m->start_pos.axis[axis - 'x'];
     struct scurve s;
     scurve_copy_scaled(&m->s, axis_r, &s);
-    double res = 0.;
-    if (accel_comp) {
-        res += accel_comp * integrate_velocity_jumps(
-                sm, &s, start, end, time_offset);
-        start_pos += scurve_add_2nd_deriv(&m->s, axis_r * accel_comp, &s);
-    }
-    if (damping_comp)
-        start_pos += scurve_add_deriv(&m->s, axis_r * damping_comp, &s);
-    res = integrate_weighted(sm, start_pos, &s, start, end, time_offset);
-    return res;
+    return integrate_weighted(sm, start_pos, &s, start, end, time_offset);
 }
 
 // Calculate the definitive integral for a range of moves
 static double
 range_integrate(const struct move *m, int axis, double move_time
-                , const struct smoother *sm
-                , double damping_comp, double accel_comp)
+                , const struct smoother *sm)
 {
     // Calculate integral for the current move
     double start = move_time - sm->hst, end = move_time + sm->hst;
     double offset = -move_time;
-    double res = move_integrate(m, axis, start, end, offset, sm
-                                , damping_comp, accel_comp);
+    double res = move_integrate(m, axis, start, end, offset, sm);
     // Integrate over previous moves
     const struct move *prev = m;
     while (unlikely(start < 0.)) {
         prev = list_prev_entry(prev, node);
         start += prev->move_t;
         offset -= prev->move_t;
-        res += move_integrate(prev, axis, start, prev->move_t, offset, sm
-                              , damping_comp, accel_comp);
+        res += move_integrate(prev, axis, start, prev->move_t, offset, sm);
     }
     // Integrate over future moves
     offset = -move_time;
@@ -66,8 +54,7 @@ range_integrate(const struct move *m, int axis, double move_time
         end -= m->move_t;
         offset += m->move_t;
         m = list_next_entry(m, node);
-        res += move_integrate(m, axis, 0., end, offset, sm
-                              , damping_comp, accel_comp);
+        res += move_integrate(m, axis, 0., end, offset, sm);
     }
     return res;
 }
@@ -75,22 +62,15 @@ range_integrate(const struct move *m, int axis, double move_time
 // Calculate average position over smooth_time window
 static inline double
 calc_position(const struct move *m, int axis, double move_time
-              , const struct smoother *sm
-              , double damping_ratio, double accel_comp)
+              , const struct smoother *sm)
 {
-    accel_comp *= (1. - damping_ratio * damping_ratio);
-    double damping_comp = 2. * damping_ratio * sqrt(accel_comp);
-    double area = range_integrate(m, axis, move_time, sm
-                                  , damping_comp, accel_comp);
-    return area * sm->inv_norm;
+    return range_integrate(m, axis, move_time, sm);
 }
 
 struct smooth_axis {
     struct stepper_kinematics sk;
     struct stepper_kinematics *orig_sk;
     struct smoother *x_smoother, *y_smoother;
-    double x_accel_comp, y_accel_comp;
-    double x_damping_ratio, y_damping_ratio;
     struct move m;
 };
 
@@ -104,8 +84,7 @@ smooth_x_calc_position(struct stepper_kinematics *sk, struct move *m
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
     if (!sa->x_smoother)
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
-    sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother
-                                      , sa->x_damping_ratio, sa->x_accel_comp);
+    sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
@@ -117,8 +96,7 @@ smooth_y_calc_position(struct stepper_kinematics *sk, struct move *m
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
     if (!sa->y_smoother)
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
-    sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother
-                                      , sa->y_damping_ratio, sa->y_accel_comp);
+    sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
@@ -132,51 +110,42 @@ smooth_xy_calc_position(struct stepper_kinematics *sk, struct move *m
         return sa->orig_sk->calc_position_cb(sa->orig_sk, m, move_time);
     sa->m.start_pos = move_get_coord(m, move_time);
     if (sa->x_smoother)
-        sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother
-                                          , sa->x_damping_ratio
-                                          , sa->x_accel_comp);
+        sa->m.start_pos.x = calc_position(m, 'x', move_time, sa->x_smoother);
     if (sa->y_smoother)
-        sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother
-                                          , sa->y_damping_ratio
-                                          , sa->y_accel_comp);
+        sa->m.start_pos.y = calc_position(m, 'y', move_time, sa->y_smoother);
     return sa->orig_sk->calc_position_cb(sa->orig_sk, &sa->m, DUMMY_T);
 }
 
 void __visible
-smooth_axis_set_time(struct stepper_kinematics *sk
-                     , double smooth_x, double smooth_y)
+smooth_axis_set_params(struct stepper_kinematics *sk
+                       , double target_freq_x, double target_freq_y
+                       , double damping_ratio_x, double damping_ratio_y)
 {
     struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
     free(sa->x_smoother);
     free(sa->y_smoother);
-    double x_hst = .5 * smooth_x, y_hst = .5 * smooth_y;
-    sa->x_smoother = x_hst ? alloc_smoother(x_hst) : NULL;
-    sa->y_smoother = y_hst ? alloc_smoother(y_hst) : NULL;
+    sa->x_smoother = target_freq_x ?
+        alloc_smoother(target_freq_x, damping_ratio_x) : NULL;
+    sa->y_smoother = target_freq_y ?
+        alloc_smoother(target_freq_y, damping_ratio_y) : NULL;
 
     double hst = 0.;
-    if (sa->sk.active_flags & AF_X)
-        hst = x_hst;
-    if (sa->sk.active_flags & AF_Y)
-        hst = y_hst > hst ? y_hst : hst;
+    if ((sa->sk.active_flags & AF_X) && (sa->x_smoother))
+        hst = sa->x_smoother->hst;
+    if ((sa->sk.active_flags & AF_Y) && (sa->y_smoother))
+        hst = sa->y_smoother->hst > hst ? sa->y_smoother->hst : hst;
     sa->sk.gen_steps_pre_active = sa->sk.gen_steps_post_active = hst;
 }
 
-void __visible
-smooth_axis_set_damping_ratio(struct stepper_kinematics *sk
-                             , double damping_ratio_x, double damping_ratio_y)
+double __visible
+smooth_axis_get_half_smooth_time(double target_freq, double damping_ratio)
 {
-    struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    sa->x_damping_ratio = damping_ratio_x;
-    sa->y_damping_ratio = damping_ratio_y;
-}
-
-void __visible
-smooth_axis_set_accel_comp(struct stepper_kinematics *sk
-                           , double accel_comp_x, double accel_comp_y)
-{
-    struct smooth_axis *sa = container_of(sk, struct smooth_axis, sk);
-    sa->x_accel_comp = accel_comp_x;
-    sa->y_accel_comp = accel_comp_y;
+    struct smoother *sm = alloc_smoother(target_freq, damping_ratio);
+    if (!sm)
+        return 0.;
+    double hst = sm->hst;
+    free(sm);
+    return hst;
 }
 
 int __visible

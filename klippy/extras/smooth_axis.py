@@ -7,8 +7,6 @@
 import logging, math
 import chelper
 
-MAX_ACCEL_COMPENSATION = 0.005
-
 class SmoothAxis:
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -22,10 +20,6 @@ class SmoothAxis:
         self.smoother_freq_y = config.getfloat('smoother_freq_y', 0., minval=0.)
         self.stepper_kinematics = []
         self.orig_stepper_kinematics = []
-        # Stepper kinematics code
-        ffi_main, ffi_lib = chelper.get_ffi()
-        self._set_time = ffi_lib.smooth_axis_set_time
-        self._set_sk = ffi_lib.smooth_axis_set_sk
         # Register gcode commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_command("SET_SMOOTH_AXIS",
@@ -48,39 +42,28 @@ class SmoothAxis:
             self.stepper_kinematics.append(sk)
             self.orig_stepper_kinematics.append(orig_sk)
         # Configure initial values
-        config_smoother_freq_x = self.smoother_freq_x
-        config_smoother_freq_y = self.smoother_freq_y
-        self.smoother_freq_x = self.smoother_freq_y = 0.
-        self._set_smoothing(config_smoother_freq_x, config_smoother_freq_y,
+        self.hst_x = self.hst_y = 0.
+        self._set_smoothing(self.smoother_freq_x, self.smoother_freq_y,
                             self.damping_ratio_x, self.damping_ratio_y)
     def _set_smoothing(self, smoother_freq_x, smoother_freq_y
                        , damping_ratio_x, damping_ratio_y):
-        max_old_freq = max(self.smoother_freq_x, self.smoother_freq_y)
-        old_smooth_time = 1. / (3. * max_old_freq) if max_old_freq > 0 else 0.
-        max_new_freq = max(smoother_freq_x, smoother_freq_y)
-        new_smooth_time = 1. / (3. * max_new_freq) if max_new_freq > 0 else 0.
+        ffi_main, ffi_lib = chelper.get_ffi()
+        old_smooth_time = max(self.hst_x, self.hst_y)
+        self.hst_x = ffi_lib.smooth_axis_get_half_smooth_time(
+                self.smoother_freq_x, self.damping_ratio_x)
+        self.hst_y = ffi_lib.smooth_axis_get_half_smooth_time(
+                self.smoother_freq_y, self.damping_ratio_y)
+        new_smooth_time = max(self.hst_x, self.hst_y)
+
         self.toolhead.note_step_generation_scan_time(new_smooth_time,
                                                      old_delay=old_smooth_time)
         self.smoother_freq_x = smoother_freq_x
         self.smoother_freq_y = smoother_freq_y
         self.damping_ratio_x = damping_ratio_x
         self.damping_ratio_y = damping_ratio_y
-        if smoother_freq_x > 0:
-            accel_comp_x = 1. / (2. * math.pi * smoother_freq_x)**2
-            smooth_x = 2. / (3 * smoother_freq_x)
-        else:
-            accel_comp_x = smooth_x = 0.
-        if smoother_freq_y > 0:
-            accel_comp_y = 1. / (2. * math.pi * smoother_freq_y)**2
-            smooth_y = 2. / (3 * smoother_freq_y)
-        else:
-            accel_comp_y = smooth_y = 0.
-        ffi_main, ffi_lib = chelper.get_ffi()
         for sk in self.stepper_kinematics:
-            ffi_lib.smooth_axis_set_time(sk, smooth_x, smooth_y)
-            ffi_lib.smooth_axis_set_damping_ratio(sk, damping_ratio_x,
-                                                  damping_ratio_y)
-            ffi_lib.smooth_axis_set_accel_comp(sk, accel_comp_x, accel_comp_y)
+            ffi_lib.smooth_axis_set_params(sk, smoother_freq_x, smoother_freq_y,
+                                           damping_ratio_x, damping_ratio_y)
     cmd_SET_SMOOTH_AXIS_help = "Set cartesian time smoothing parameters"
     def cmd_SET_SMOOTH_AXIS(self, gcmd):
         damping_ratio_x = gcmd.get_float(
