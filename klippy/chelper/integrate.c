@@ -48,7 +48,8 @@ integrate_weighted(const struct smoother *sm, double pos, struct scurve *s
     // abs(toff) >> hst, and s(t) - when abs(toff) >> total_accel_t.
     // Note that when abs(toff) >> hst, it means that abs(toff) ~ move_t, so
     // it is not possible that abs(toff) >> total_accel_t at the same time.
-    if (toff2 > sm->h2) {
+    if (toff2 > sm->h2 * 2.) {  // Approximate test that abs(toff) >> hst
+        // Integrate via expansion of s((t + toff) - toff)
         pos += scurve_eval(s, -toff);
         scurve_offset(s, -toff);
 
@@ -62,13 +63,14 @@ integrate_weighted(const struct smoother *sm, double pos, struct scurve *s
         res += pos * (iwtn(sm, 0, end) - iwtn(sm, 0, start));
         return res;
     } else {
+        // Integrate via expansion of w(t + toff)
         double res = sm->c2 *
             (scurve_tn_antiderivative(s, 2, end)
              - scurve_tn_antiderivative(s, 2, start));
         res += (2. * sm->c2 * toff + sm->c1) *
             (scurve_tn_antiderivative(s, 1, end)
              - scurve_tn_antiderivative(s, 1, start));
-        res += (sm->c2 * toff2 + sm->c1 * toff) *
+        res += (sm->c2 * toff + sm->c1) * toff *
             (scurve_tn_antiderivative(s, 0, end)
              - scurve_tn_antiderivative(s, 0, start));
         start += toff; end += toff;
