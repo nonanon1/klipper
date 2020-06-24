@@ -31,6 +31,11 @@ heavy moving mass, etc. Those should be checked and fixed first.
 Switch to S-Curve acceleration branch
 ===========================
 
+Instructions below assume that you have an existing Klipper installation
+from the main repo. If you don't, follow the
+[instructions](https://github.com/KevinOConnor/klipper/blob/master/docs/Installation.md)
+to set up the Klipper from the main repo first.
+
 To try experimental S-Curve acceleration mode in your existing Klipper
 installation, SSH to your Raspberry Pi and run the following commands:
 ```
@@ -76,6 +81,18 @@ Pi and run the following commands:
 $ cd klipper
 $ sudo service klipper stop
 $ git checkout master
+$ sudo service klipper start
+```
+
+## Updating
+
+To update an existing installation to a newer version of the code, run the
+following commands:
+```
+$ cd klipper
+$ sudo service klipper stop
+$ git fetch s-curve-exp
+$ git checkout s-curve-exp/scurve-smoothing
 $ sudo service klipper start
 ```
 
