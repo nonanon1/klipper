@@ -6,19 +6,15 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import chelper
 
-# Some of the shapers use polynomial expansion over damping ratio for their
-# coefficients and only support damping ratio up to this value.
-MAX_DAMPING_RATIO = 0.3
-
 class InputShaper:
     def __init__(self, config):
         self.printer = config.get_printer()
         self.printer.register_event_handler("klippy:connect", self.connect)
         self.toolhead = None
         self.damping_ratio_x = config.getfloat(
-                'damping_ratio_x', 0.1, minval=0., maxval=MAX_DAMPING_RATIO)
+                'damping_ratio_x', 0.1, minval=0., maxval=1.)
         self.damping_ratio_y = config.getfloat(
-                'damping_ratio_y', 0.1, minval=0., maxval=MAX_DAMPING_RATIO)
+                'damping_ratio_y', 0.1, minval=0., maxval=1.)
         self.shaper_freq_x = config.getfloat('shaper_freq_x', 0., minval=0.)
         self.shaper_freq_y = config.getfloat('shaper_freq_y', 0., minval=0.)
         ffi_main, ffi_lib = chelper.get_ffi()
