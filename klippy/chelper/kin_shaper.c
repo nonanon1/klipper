@@ -65,12 +65,10 @@ calc_position(struct move *m, int axis, double move_time
 enum INPUT_SHAPER_TYPE {
     INPUT_SHAPER_ZV = 0,
     INPUT_SHAPER_ZVD = 1,
-    INPUT_SHAPER_ZVDD = 2,
-    INPUT_SHAPER_ZVDDD = 3,
-    INPUT_SHAPER_MZV = 4,
-    INPUT_SHAPER_EI = 5,
-    INPUT_SHAPER_2HUMP_EI = 6,
-    INPUT_SHAPER_3HUMP_EI = 7,
+    INPUT_SHAPER_MZV = 2,
+    INPUT_SHAPER_EI = 3,
+    INPUT_SHAPER_2HUMP_EI = 4,
+    INPUT_SHAPER_3HUMP_EI = 5,
 };
 
 struct input_shaper {
@@ -136,57 +134,6 @@ init_shaper_zvd(double shaper_freq, double damping_ratio
     (*pulses)[0].a = K2 * inv_D;
     (*pulses)[1].a = 2. * K * inv_D;
     (*pulses)[2].a = inv_D;
-}
-
-static void
-init_shaper_zvdd(double shaper_freq, double damping_ratio
-                 , struct shaper_pulse **pulses, int *n)
-{
-    *n = 4;
-    *pulses = malloc(*n * sizeof(struct shaper_pulse));
-
-    double half_period = calc_half_period(shaper_freq, damping_ratio);
-    double K = calc_ZV_K(damping_ratio);
-    double K2 = K * K;
-    double K3 = K2 * K;
-    double inv_D = 1. / (K3 + 3. * K2 + 3. * K + 1);
-
-    (*pulses)[0].t = -3. * half_period;
-    (*pulses)[1].t = -2. * half_period;
-    (*pulses)[2].t = -half_period;
-    (*pulses)[3].t = 0.;
-
-    (*pulses)[0].a = K3 * inv_D;
-    (*pulses)[1].a = 3. * K2 * inv_D;
-    (*pulses)[2].a = 3. * K * inv_D;
-    (*pulses)[3].a = inv_D;
-}
-
-static void
-init_shaper_zvddd(double shaper_freq, double damping_ratio
-                 , struct shaper_pulse **pulses, int *n)
-{
-    *n = 5;
-    *pulses = malloc(*n * sizeof(struct shaper_pulse));
-
-    double half_period = calc_half_period(shaper_freq, damping_ratio);
-    double K = calc_ZV_K(damping_ratio);
-    double K2 = K * K;
-    double K3 = K2 * K;
-    double K4 = K3 * K;
-    double inv_D = 1. / (K4 + 4. * K3 + 6. * K2 + 4. * K + 1.);
-
-    (*pulses)[0].t = -4. * half_period;
-    (*pulses)[1].t = -3. * half_period;
-    (*pulses)[2].t = -2. * half_period;
-    (*pulses)[3].t = -half_period;
-    (*pulses)[4].t = 0.;
-
-    (*pulses)[0].a = K4 * inv_D;
-    (*pulses)[1].a = 4. * K3 * inv_D;
-    (*pulses)[2].a = 6. * K2 * inv_D;
-    (*pulses)[3].a = 4. * K * inv_D;
-    (*pulses)[4].a = inv_D;
 }
 
 static void
@@ -399,8 +346,6 @@ input_shaper_set_sk(struct stepper_kinematics *sk
 static is_init_shaper_callback init_shaper_callbacks[] = {
     [INPUT_SHAPER_ZV] = &init_shaper_zv,
     [INPUT_SHAPER_ZVD] = &init_shaper_zvd,
-    [INPUT_SHAPER_ZVDD] = &init_shaper_zvdd,
-    [INPUT_SHAPER_ZVDDD] = &init_shaper_zvddd,
     [INPUT_SHAPER_MZV] = &init_shaper_mzv,
     [INPUT_SHAPER_EI] = &init_shaper_ei,
     [INPUT_SHAPER_2HUMP_EI] = &init_shaper_2hump_ei,

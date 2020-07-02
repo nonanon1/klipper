@@ -135,12 +135,10 @@ defs_kin_shaper = """
     enum INPUT_SHAPER_TYPE {
         INPUT_SHAPER_ZV = 0,
         INPUT_SHAPER_ZVD = 1,
-        INPUT_SHAPER_ZVDD = 2,
-        INPUT_SHAPER_ZVDDD = 3,
-        INPUT_SHAPER_MZV = 4,
-        INPUT_SHAPER_EI = 5,
-        INPUT_SHAPER_2HUMP_EI = 6,
-        INPUT_SHAPER_3HUMP_EI = 7,
+        INPUT_SHAPER_MZV = 2,
+        INPUT_SHAPER_EI = 3,
+        INPUT_SHAPER_2HUMP_EI = 4,
+        INPUT_SHAPER_3HUMP_EI = 5,
     };
 
     double input_shaper_get_step_generation_window(int shaper_type

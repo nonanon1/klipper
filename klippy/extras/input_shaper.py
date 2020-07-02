@@ -21,8 +21,6 @@ class InputShaper:
         self.shapers = {None: None
                 , 'zv': ffi_lib.INPUT_SHAPER_ZV
                 , 'zvd': ffi_lib.INPUT_SHAPER_ZVD
-                , 'zvdd': ffi_lib.INPUT_SHAPER_ZVDD
-                , 'zvddd': ffi_lib.INPUT_SHAPER_ZVDDD
                 , 'mzv': ffi_lib.INPUT_SHAPER_MZV
                 , 'ei': ffi_lib.INPUT_SHAPER_EI
                 , '2hump_ei': ffi_lib.INPUT_SHAPER_2HUMP_EI
