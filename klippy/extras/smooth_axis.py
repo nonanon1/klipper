@@ -49,7 +49,6 @@ class SmoothAxis:
             if res < 0:
                 s.set_stepper_kinematics(orig_sk)
                 continue
-            s.set_trapq(self.toolhead.get_trapq())
             self.stepper_kinematics.append(sk)
             self.orig_stepper_kinematics.append(orig_sk)
         # Configure initial values
