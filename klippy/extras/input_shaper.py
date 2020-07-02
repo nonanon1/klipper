@@ -74,6 +74,7 @@ class InputShaper:
                     shaper_type_y, shaper_freq_y, damping_ratio_y))
         self.toolhead.note_step_generation_scan_time(new_delay,
                                                      old_delay=self.old_delay)
+        self.old_delay = new_delay
         self.shaper_type_x = shaper_type_x
         self.shaper_type_y = shaper_type_y
         self.shaper_freq_x = shaper_freq_x
