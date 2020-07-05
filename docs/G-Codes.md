@@ -149,11 +149,9 @@ The following standard commands are supported:
   samples taken during the test.
 - `TURN_OFF_HEATERS`: Turn off all heaters.
 - `SET_VELOCITY_LIMIT [VELOCITY=<value>] [ACCEL=<value>]
-  [ACCEL_TO_DECEL=<value>] [SQUARE_CORNER_VELOCITY=<value>]
-  [ACCEL_ORDER=<value>] [JERK=<value>] [ACCEL_COMPENSATION=<value>]`:
-  Modify the printer's velocity limits. Note that one may only set values less
-  than or equal to the limits specified in the config file except ACCEL_ORDER,
-  JERK and ACCEL_COMPENSATION, which can be set to higher values.
+  [ACCEL_TO_DECEL=<value>] [SQUARE_CORNER_VELOCITY=<value>]`: Modify
+  the printer's velocity limits. Note that one may only set values
+  less than or equal to the limits specified in the config file.
 - `SET_HEATER_TEMPERATURE HEATER=<heater_name> [TARGET=<target_temperature>]`:
   Sets the target temperature for a heater. If a target temperature is
   not supplied, the target is 0.
@@ -598,3 +596,18 @@ been enabled:
     delay duration for the identified [delayed_gcode] and starts the timer
     for gcode execution.  A value of 0 will cancel a pending delayed gcode
     from executing.
+
+## Resonance compensation
+
+The following command is enabled if an [input_shaper] config section has
+been enabled:
+  - `SET_INPUT_SHAPER [SHAPER_FREQ_X=<shaper_freq_x>]
+    [SHAPER_FREQ_Y=<shaper_freq_y>] [DAMPING_RATIO_X=<damping_ratio_x>]
+    [DAMPING_RATIO_Y=<damping_ratio_y>] [SHAPER_TYPE=<shaper>]
+    [SHAPER_TYPE_X=<shaper_type_x>] [SHAPER_TYPE_Y=<shaper_type_y>]`: Modify
+    input shaper parameters. Note that SHAPER_TYPE parameter resets input shaper
+    for both X and Y axes even if different shaper types have been configured
+    in [input_shaper] section. SHAPER_TYPE cannot be used together with either
+    of SHAPER_TYPE_X and SHAPER_TYPE_Y parameters. See
+    [example-extras.cfg](https://github.com/KevinOConnor/klipper/tree/master/config/example-extras.cfg)
+    for more details on each of these parameters.
