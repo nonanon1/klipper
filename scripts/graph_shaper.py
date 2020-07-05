@@ -46,22 +46,6 @@ def get_zvd_shaper():
     T = [0., .5*t_d, t_d]
     return (A, T, "ZVD")
 
-def get_zvdd_shaper():
-    df = math.sqrt(1. - SHAPER_DAMPING_RATIO**2)
-    K = math.exp(-SHAPER_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (SHAPER_FREQ * df)
-    A = [1., 3.*K, 3.*K**2, K**3]
-    T = [0., .5*t_d, t_d, 1.5*t_d]
-    return (A, T, "ZVDD")
-
-def get_zvddd_shaper():
-    df = math.sqrt(1. - SHAPER_DAMPING_RATIO**2)
-    K = math.exp(-SHAPER_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (SHAPER_FREQ * df)
-    A = [1., 4.*K, 6.*K**2, 4.*K**3, K**4]
-    T = [0., .5*t_d, t_d, 1.5*t_d, 2.*t_d]
-    return (A, T, "ZVDDD")
-
 def get_mzv_shaper():
     df = math.sqrt(1. - SHAPER_DAMPING_RATIO**2)
     K = math.exp(-.75 * SHAPER_DAMPING_RATIO * math.pi / df)
