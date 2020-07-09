@@ -28,4 +28,12 @@ can be reproduced on the mainline Klipper code, please create a separate issue
 `klippy.log` from the attempt on the **mainline** code.
 
 Updates:
+
+  * 2020-07-09: `[input_shaper]` is merged into the mainline Klipper (except the
+    docs for now)! Other approaches (e.g. `[smooth_axis]`) are incompatible with
+    input shaping, which means that all S-Curve branches except `scurve-shaping`
+    can no longer be updated. All users of `scurve-smoothing` and
+   `scurve-c-combine-smoothpa` are encouraged to migrate to `scurve-shaping`
+    branch (or to the mainline Klipper) and update their configurations
+    [accordingly](https://github.com/dmbutyugin/klipper/blob/scurve-shaping/docs/S-Curve.md#switch-to-s-curve-acceleration-branch).
   * 2020-07-06: `scurve-shaping` branch is now recommended for broad use.
