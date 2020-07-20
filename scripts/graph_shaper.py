@@ -224,9 +224,9 @@ def plot_shaper(shaper):
     freqs, response, response_legend = gen_shaper_response(shaper)
     time, step_vals, step_legend = gen_shaped_step_function(shaper)
 
-    fig, (ax1, ax2) = matplotlib.pyplot.subplots(nrows=2)
-    ax1.set_title("Vibration response simulation for shaper '%s'\n"
-                  "configured for frequency=%.3f, damping_ratio=%.3f"
+    fig, (ax1, ax2) = matplotlib.pyplot.subplots(nrows=2, figsize=(10,9))
+    ax1.set_title("Vibration response simulation for shaper '%s',\n"
+                  "shaper_freq=%.1f Hz, damping_ratio=%.3f"
                   % (shaper[-1], SHAPER_FREQ, SHAPER_DAMPING_RATIO))
     ax1.plot(freqs, response)
     ax1.set_ylim(bottom=0.)
@@ -240,9 +240,9 @@ def plot_shaper(shaper):
     ax1.grid(which='major', color='grey')
     ax1.grid(which='minor', color='lightgrey')
 
-    ax2.set_title(
-            "Step input @ resonance frequency=%.3f, damping_ratio=%.3f" % (
-                STEP_SIMULATION_RESONANCE_FREQ, STEP_SIMULATION_DAMPING_RATIO))
+    ax2.set_title("Unit step input, resonance frequency=%.1f Hz, "
+                  "damping ratio=%.3f" % (STEP_SIMULATION_RESONANCE_FREQ,
+                                          STEP_SIMULATION_DAMPING_RATIO))
     ax2.plot(time, step_vals)
     ax2.legend(step_legend, loc='best', prop=fontP)
     ax2.set_xlabel('Time, sec')

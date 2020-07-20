@@ -14,8 +14,8 @@ INV_SEG_TIME = 1. / SEG_TIME
 SPRING_FREQ=35.0
 DAMPING_RATIO=0.05
 
-MEASURED_FREQ=40.0
-MEAS_DAMPING_RATIO=0.1
+CONFIG_FREQ=40.0
+CONFIG_DAMPING_RATIO=0.1
 
 ######################################################################
 # Basic trapezoid motion
@@ -24,9 +24,10 @@ MEAS_DAMPING_RATIO=0.1
 # List of moves: [(start_v, end_v, move_t), ...]
 Moves = [
     (0., 0., .100),
-    (6.869, 89.443, None), (89.443, 89.443, .150), (89.443, 17.361, None),
-    (19.410, 100., None), (100., 100., .100), (100., 5., None),
-    (-5., -120., None), (-120., -120., .100), (-120., -.5, None),
+    (6.869, 89.443, None), (89.443, 89.443, .120), (89.443, 17.361, None),
+    (19.410, 120., None), (120., 120., .130), (120., 5., None),
+    (0., 0., 0.01),
+    (-5., -100., None), (-100., -100., .100), (-100., -.5, None),
     (0., 0., .200)
 ]
 ACCEL = 3000.
@@ -204,8 +205,8 @@ def calc_weighted3(positions, smooth_time):
 ######################################################################
 
 def calc_spring_raw(positions):
-    sa = (INV_SEG_TIME / (MEASURED_FREQ * 2. * math.pi))**2
-    ra = 2. * MEAS_DAMPING_RATIO * math.sqrt(sa)
+    sa = (INV_SEG_TIME / (CONFIG_FREQ * 2. * math.pi))**2
+    ra = 2. * CONFIG_DAMPING_RATIO * math.sqrt(sa)
     out = [0.] * len(positions)
     for i in indexes(positions):
         out[i] = (positions[i]
@@ -215,8 +216,8 @@ def calc_spring_raw(positions):
 
 def calc_spring_double_weighted(positions, smooth_time):
     offset = time_to_index(smooth_time * .25)
-    sa = (INV_SEG_TIME / (offset * MEASURED_FREQ * 2. * math.pi))**2
-    ra = 2. * MEAS_DAMPING_RATIO * math.sqrt(sa)
+    sa = (INV_SEG_TIME / (offset * CONFIG_FREQ * 2. * math.pi))**2
+    ra = 2. * CONFIG_DAMPING_RATIO * math.sqrt(sa)
     out = [0.] * len(positions)
     for i in indexes(positions):
         out[i] = (positions[i]
@@ -230,25 +231,25 @@ def calc_spring_double_weighted(positions, smooth_time):
 ######################################################################
 
 def get_zv_shaper():
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
     A = [1., K]
     T = [0., .5*t_d]
     return (A, T, "ZV")
 
 def get_zvd_shaper():
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
     A = [1., 2.*K, K**2]
     T = [0., .5*t_d, t_d]
     return (A, T, "ZVD")
 
 def get_mzv_shaper():
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-.75 * MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-.75 * CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
 
     a1 = 1. - 1. / math.sqrt(2.)
     a2 = (math.sqrt(2.) - 1.) * K
@@ -260,9 +261,9 @@ def get_mzv_shaper():
 
 def get_ei_shaper():
     v_tol = 0.05 # vibration tolerance
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
 
     a1 = .25 * (1. + v_tol)
     a2 = .5 * (1. - v_tol) * K
@@ -274,9 +275,9 @@ def get_ei_shaper():
 
 def get_2hump_ei_shaper():
     v_tol = 0.05 # vibration tolerance
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
 
     V2 = v_tol**2
     X = pow(V2 * (math.sqrt(1. - V2) + 1.), 1./3.)
@@ -291,9 +292,9 @@ def get_2hump_ei_shaper():
 
 def get_3hump_ei_shaper():
     v_tol = 0.05 # vibration tolerance
-    df = math.sqrt(1. - MEAS_DAMPING_RATIO**2)
-    K = math.exp(-MEAS_DAMPING_RATIO * math.pi / df)
-    t_d = 1. / (MEASURED_FREQ * df)
+    df = math.sqrt(1. - CONFIG_DAMPING_RATIO**2)
+    K = math.exp(-CONFIG_DAMPING_RATIO * math.pi / df)
+    t_d = 1. / (CONFIG_FREQ * df)
 
     K2 = K*K
     a1 = 0.0625 * (1. + 3. * v_tol + 2. * math.sqrt(2. * (v_tol + 1.) * v_tol))
@@ -326,7 +327,7 @@ def calc_shaper(shaper, positions):
     return out
 
 # Ideal values
-SMOOTH_TIME = (2./3.) / MEASURED_FREQ
+SMOOTH_TIME = (2./3.) / CONFIG_FREQ
 
 def gen_updated_position(positions):
     #return calc_weighted(positions, 0.040)
@@ -365,10 +366,10 @@ def plot_motion():
                head_velocities, head_upd_velocities,
                head_accels, head_upd_accels)
     fig, (ax1, ax2, ax3) = matplotlib.pyplot.subplots(nrows=3, sharex=True)
-    ax1.set_title("Simulation (belt frequency=%.3f, damping_ratio=%.3f)\n"
-                  "(measured belt frequency=%.3f, damping_ratio = %.3f)"
-                  % (SPRING_FREQ, DAMPING_RATIO, MEASURED_FREQ
-                      , MEAS_DAMPING_RATIO))
+    ax1.set_title("Simulation: resonance freq=%.1f Hz, damping_ratio=%.3f,\n"
+                  "configured freq=%.1f Hz, damping_ratio = %.3f"
+                  % (SPRING_FREQ, DAMPING_RATIO, CONFIG_FREQ
+                      , CONFIG_DAMPING_RATIO))
     ax1.set_ylabel('Velocity (mm/s)')
     ax1.plot(times, upd_velocities, 'r', label='New Velocity', alpha=0.8)
     ax1.plot(times, velocities, 'g', label='Nominal Velocity', alpha=0.8)
